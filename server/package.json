@@ -1,0 +1,14 @@
+{
+  "name": "mastomi-lab-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Optional back-end for MasTomi's Laboratory — accounts, classrooms, progress sync and analytics.",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
+  }
+}

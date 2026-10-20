@@ -1,0 +1,9 @@
+# Cloudflare Pages redirects.
+#
+# The laboratory uses hash routing (#/room/mechanics), so this file is only a
+# safety net for anyone who lands on a clean path, and for the eventual
+# Node.js API on the same domain.
+
+/api/*  /api/:splat  200
+
+/*  /index.html  200

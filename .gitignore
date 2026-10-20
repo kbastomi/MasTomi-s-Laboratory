@@ -1,0 +1,17 @@
+node_modules/
+dist/
+.vite/
+*.local
+
+# the optional back-end's local database
+server/data/
+
+# exported session transcripts (opt-in, large — regenerate with npm run export:conversations)
+docs/conversations/*.json
+
+# QA artefacts
+tools/qa/shots/
+
+.DS_Store
+Thumbs.db
+*.log
