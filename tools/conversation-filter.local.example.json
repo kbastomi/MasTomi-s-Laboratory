@@ -1,0 +1,16 @@
+{
+  "_comment": [
+    "Copy this file to tools/conversation-filter.local.json and edit it.",
+    "The copy is git-ignored, so the names of any other project never enter",
+    "the public repository.",
+    "",
+    "includeDirs - extra directories whose sessions belong to this project's",
+    "               story (for example the prototype it grew out of).",
+    "drop        - plain strings; any paragraph or tool call containing one",
+    "               of them is removed from the transcript entirely.",
+    "redact      - plain path rewrites, applied to whatever survives."
+  ],
+  "includeDirs": [],
+  "drop": [],
+  "redact": []
+}

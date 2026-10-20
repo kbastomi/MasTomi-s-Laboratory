@@ -9,6 +9,9 @@ server/data/
 # exported session transcripts (opt-in, large — regenerate with npm run export:conversations)
 docs/conversations/*.json
 
+# the private list of what must never be exported — it names other projects
+tools/conversation-filter.local.json
+
 # QA artefacts
 tools/qa/shots/
 
