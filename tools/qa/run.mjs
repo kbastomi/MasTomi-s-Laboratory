@@ -21,7 +21,15 @@ import { preview } from 'vite'
 const ROOT = dirname(dirname(dirname(fileURLToPath(import.meta.url))))
 const SHOTS = join(ROOT, 'tools', 'qa', 'shots')
 const PORT = 4173
-const BASE = `http://localhost:${PORT}`
+
+/**
+ * By default the checks run against a local production build. Set LAB_BASE to
+ * run the very same suite against a deployed site:
+ *
+ *   LAB_BASE=https://your-domain npm run qa
+ */
+const EXTERNAL = process.env.LAB_BASE
+const BASE = EXTERNAL || `http://localhost:${PORT}`
 
 const CHROME_CANDIDATES = [
   'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
@@ -63,12 +71,15 @@ async function main() {
   }
   mkdirSync(SHOTS, { recursive: true })
 
-  const server = await preview({
-    root: ROOT,
-    preview: { port: PORT, strictPort: true, host: '127.0.0.1' },
-    logLevel: 'warn',
-  })
-  const stop = () => { try { server.httpServer.close() } catch { /* ignore */ } }
+  let server = null
+  if (!EXTERNAL) {
+    server = await preview({
+      root: ROOT,
+      preview: { port: PORT, strictPort: true, host: '127.0.0.1' },
+      logLevel: 'warn',
+    })
+  }
+  const stop = () => { try { server?.httpServer.close() } catch { /* ignore */ } }
   process.on('exit', stop)
   process.on('SIGINT', () => { stop(); process.exit(1) })
 
