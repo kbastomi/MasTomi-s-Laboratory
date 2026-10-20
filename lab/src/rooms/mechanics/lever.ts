@@ -204,11 +204,13 @@ class LeverLab implements LabInstance {
     this.beam.add(pin)
 
     this.crate = makeCrate(0.9, 0.9, 0.9, C.crate, { ring: true })
+    this.crate.name = 'lever-crate'
     this.crate.position.set(this.dLoad, 0.53, 0)
     this.beam.add(this.crate)
 
     /* the push pad is the input force */
     this.effortPod = new THREE.Group()
+    this.effortPod.name = 'lever-effort'
     this.beam.add(this.effortPod)
     const padMat = new THREE.MeshStandardMaterial({ color: 0x2fc7b6, roughness: 0.35, metalness: 0.5 })
     const pad = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.32, 0.14, 26), padMat)

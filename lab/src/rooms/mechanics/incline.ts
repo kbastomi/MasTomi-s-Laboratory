@@ -27,24 +27,28 @@ const S = {
   friction: L('Koefisien gesek  μ', 'Friction coefficient  μ'),
   loadW: L('Berat kotak  W', 'Box weight  W'),
   pushF: L('Gaya dorong sejajar  F', 'Push force along the slope  F'),
-  pushBtn: L('↑ Dorong ke atas', '↑ Push uphill'),
-  releaseBtn: L('▶ Lepaskan', '▶ Release'),
+  pushBtn: L('↑ Lepaskan dengan dorongan', '↑ Release with the push'),
+  releaseBtn: L('▶ Lepaskan tanpa dorongan', '▶ Release without pushing'),
   resetBtn: L('↺ Atur ulang', '↺ Reset'),
   measurements: L('Pengukuran', 'Measurements'),
   normal: L('Gaya normal  N', 'Normal force  N'),
   frictionF: L('Gaya gesek  f', 'Friction force  f'),
   alongPlane: L('Komponen berat sejajar  W sin θ', 'Weight along the slope  W sin θ'),
-  net: L('Gaya resultan', 'Net force'),
+  net: L('Resultan  F − W sin θ', 'Resultant  F − W sin θ'),
+  netTotal: L('Gaya bersih (termasuk gesek)', 'Net force (including friction)'),
   accel: L('Percepatan  a', 'Acceleration  a'),
   speed: L('Kecepatan  v', 'Speed  v'),
   height: L('Tinggi  h = L sin θ', 'Height  h = L sin θ'),
   maLabel: L('KEUNTUNGAN MEKANIS', 'MECHANICAL ADVANTAGE'),
   maFormula: L('MA = panjang bidang ÷ tinggi', 'MA = slope length ÷ height'),
-  win: L('Usaha dorong  F × s', 'Push work  F × s'),
-  wout: L('Usaha beban  W × h', 'Load work  W × h'),
+  win: L('Usaha dorong  F × Δs', 'Push work  F × Δs'),
+  wout: L('Usaha gravitasi  W × Δh', 'Gravity work  W × Δh'),
   statusTitle: L('Status', 'Status'),
   goal: L('Dorong kotak naik bidang miring', 'Push the box up the ramp'),
-  goalDone: L('Kotak naik! Gaya dorong hanya', 'Box is up! Your push was only'),
+  goalDone: L(
+    'Kotak naik! Dorongan {p} N melawan berat {w} N.',
+    'Box is up! Your push of {p} N against a {w} N weight.',
+  ),
   idle: L('DIAM — kotak ditahan di tempat', 'AT REST — the box is held'),
   sliding: L('BERGERAK', 'MOVING'),
   blocked: L('TERTAHAN — gesekan menahan kotak', 'HELD — friction is holding the box'),
@@ -104,6 +108,8 @@ class InclineLab implements LabInstance {
   private trace: { x: number; y: number }[] = []
   private simTime = 0
   private hudSig = ''
+  /** where the box was when it was let go — the work is measured from here */
+  private s0 = 0
 
   /* panel */
   private sAngle!: SliderHandle
@@ -115,6 +121,7 @@ class InclineLab implements LabInstance {
   private rFriction!: Readout
   private rAlong!: Readout
   private rNet!: Readout
+  private rNetTotal!: Readout
   private rAccel!: Readout
   private rSpeed!: Readout
   private rHeight!: Readout
@@ -178,6 +185,7 @@ class InclineLab implements LabInstance {
 
     /* the box */
     this.block = new THREE.Group()
+    this.block.name = 'incline-block'
     const body = new THREE.Mesh(
       new THREE.BoxGeometry(BLOCK, BLOCK, BLOCK),
       new THREE.MeshStandardMaterial({ color: C.crate, roughness: 0.8, metalness: 0.05 }),
@@ -294,6 +302,7 @@ class InclineLab implements LabInstance {
     this.rFriction = meas.readout(t(S.frictionF))
     this.rAlong = meas.readout(t(S.alongPlane))
     this.rNet = meas.readout(t(S.net))
+    this.rNetTotal = meas.readout(t(S.netTotal))
     this.rAccel = meas.readout(t(S.accel))
     this.rSpeed = meas.readout(t(S.speed))
     this.rHeight = meas.readout(t(S.height))
@@ -325,6 +334,7 @@ class InclineLab implements LabInstance {
   /* ------------------------------------------------------------ actions */
   private pushUp(): void {
     this.held = false
+    this.s0 = this.s
     this.ctx.invalidate()
   }
 
@@ -332,11 +342,13 @@ class InclineLab implements LabInstance {
     this.held = false
     this.push = 0
     this.sPush.set(0)
+    this.s0 = this.s
     this.ctx.invalidate()
   }
 
   private reset(): void {
     this.s = 0
+    this.s0 = 0
     this.v = 0
     this.held = true
     this.push = 0
@@ -384,19 +396,33 @@ class InclineLab implements LabInstance {
 
     let dirty = false
 
+    /* ---------------------------------------------------------------------
+       Sign convention: **positive is UP the slope**.
+         drive = F_push − W·sinθ      the applied forces, before friction
+         net  = drive − friction      the true resultant along the slope
+       so `s` (position) and `v` (velocity) are both up-slope positive and
+       everything is consistent with the direction the student is pushing.
+       --------------------------------------------------------------------- */
+    const drive = this.push - alongGravity
+    const fMax = this.mu * n
+
     if (!this.held) {
       /* fixed-step integration keeps the motion smooth and reproducible */
       const steps = Math.min(8, Math.max(1, Math.ceil(dt / (1 / 120))))
       const h = dt / steps
       for (let i = 0; i < steps; i++) {
-        const dir = Math.abs(this.v) < 1e-3 ? (alongGravity > this.push ? 1 : -1) : Math.sign(this.v)
-        const frictionMag = this.mu * n
-        let net = alongGravity - this.push - dir * frictionMag
-
-        /* static friction: the box stays put when the drive is too weak */
-        if (Math.abs(this.v) < 1e-3 && Math.abs(alongGravity - this.push) <= frictionMag) {
-          this.v = 0
+        const moving = Math.abs(this.v) > 1e-3
+        let net: number
+        if (moving) {
+          /* kinetic friction opposes the motion */
+          net = drive - Math.sign(this.v) * fMax
+        } else if (Math.abs(drive) <= fMax) {
+          /* static friction holds the box — nothing moves */
           net = 0
+          this.v = 0
+        } else {
+          /* the drive beats the friction — the box starts to slide */
+          net = drive - Math.sign(drive) * fMax
         }
 
         const a = net / m
@@ -443,16 +469,20 @@ class InclineLab implements LabInstance {
     this.arrowNormal.set(bp.clone().add(normal.clone().multiplyScalar(0.62)), normal, lN)
     this.arrowNormal.userData.setLabel(`N = ${num(n, 0)} N`)
 
-    const lF = 0.3 + 0.9 * Math.min(1, (this.mu * n) / 600)
-    const fDir = this.v > 0.01 ? -1 : 1
+    /* friction opposes the tendency of motion:
+       at rest it opposes the drive, while moving it opposes the velocity */
+    const moving = Math.abs(this.v) > 1e-3
+    const fDir = moving ? -Math.sign(this.v) : (drive === 0 ? 1 : -Math.sign(drive))
+    const fActual = moving ? this.mu * n : Math.min(this.mu * n, Math.abs(drive))
+    const lF = 0.3 + 0.9 * Math.min(1, fActual / 600)
     this.arrowFriction.set(
       bp.clone()
         .add(along.clone().multiplyScalar(fDir * 0.95))
         .add(new THREE.Vector3(0, -0.22, 0.85)),
       along.clone().multiplyScalar(fDir),
-      this.mu > 0.001 ? lF : 0,
+      fActual > 0.5 ? lF : 0,
     )
-    this.arrowFriction.userData.setLabel(`f = ${num(this.mu * n, 0)} N`)
+    this.arrowFriction.userData.setLabel(`f = ${num(fActual, 0)} N`)
 
     const lP = this.push > 1 ? 0.4 + 1.1 * Math.min(1, this.push / 800) : 0
     this.arrowPush.set(
@@ -475,11 +505,16 @@ class InclineLab implements LabInstance {
 
     const m = this.mass
     const fMax = this.mu * n
-    const netDrive = alongGravity - this.push
+    /* positive is UP the slope, everywhere */
+    const drive = this.push - alongGravity
     const moving = Math.abs(this.v) > 1e-3
-    const a = moving ? netDrive / m : 0
+    const fActual = moving ? fMax : Math.min(fMax, Math.abs(drive))
+    const fSign = moving ? -Math.sign(this.v) : (drive === 0 ? 0 : -Math.sign(drive))
+    const net = drive + fSign * fActual
+    const a = moving ? net / m : 0
     const height = RAMP_LEN * Math.sin(th)
     const ma = 1 / Math.max(0.08, Math.sin(th))
+    const ds = this.s - this.s0
 
     const sig = `${this.thetaDeg}|${this.mu}|${this.W}|${this.push}|${this.s.toFixed(2)}|${this.v.toFixed(2)}|${this.held}`
     if (!force && sig === this.hudSig) return
@@ -487,14 +522,18 @@ class InclineLab implements LabInstance {
 
     this.maNum.textContent = num(ma, 2)
     this.rNormal.set(`${num(n, 0)} N`, 'neutral')
-    this.rFriction.set(`${num(fMax, 0)} N`, 'neutral')
-    this.rAlong.set(`${num(alongGravity, 0)} N`, 'output')
-    this.rNet.set(`${num(netDrive, 0)} N`, netDrive > 0 ? 'output' : 'input')
+    this.rFriction.set(
+      `${num(fActual, 0)} N${fSign > 0 ? '  ↑' : fSign < 0 ? '  ↓' : ''}`,
+      'neutral',
+    )
+    this.rAlong.set(`${num(alongGravity, 0)} N  ↓`, 'output')
+    this.rNet.set(`${num(drive, 0)} N`, drive > 0 ? 'input' : drive < 0 ? 'output' : 'neutral')
+    this.rNetTotal.set(`${num(net, 0)} N`, net > 0 ? 'input' : net < 0 ? 'output' : 'neutral')
     this.rAccel.set(`${num(a, 2)} m/s²`, 'neutral')
     this.rSpeed.set(`${num(Math.abs(this.v), 2)} m/s`, 'neutral')
     this.rHeight.set(`${num(height, 2)} m`, 'neutral')
-    this.rWin.set(`${num(this.push * this.s, 0)} J`, 'input')
-    this.rWout.set(`${num(this.W * (this.s * Math.sin(th)), 0)} J`, 'output')
+    this.rWin.set(`${num(this.push * ds, 0)} J`, 'input')
+    this.rWout.set(`${num(this.W * ds * Math.sin(th), 0)} J`, 'output')
 
     if (this.held) {
       this.status.set(
@@ -506,10 +545,10 @@ class InclineLab implements LabInstance {
         'neutral',
       )
       this.goal.setDone(false)
-    } else if (!moving && Math.abs(netDrive) <= fMax) {
+    } else if (!moving && Math.abs(drive) <= fMax) {
       this.status.set(
         `${t(S.blocked)}<span class="sub">${tf(S.blockedSub, {
-          d: num(Math.abs(netDrive), 0),
+          d: num(Math.abs(drive), 0),
           f: num(fMax, 0),
         })}</span>`,
         'warn',
@@ -524,7 +563,7 @@ class InclineLab implements LabInstance {
         'result',
       )
       if (this.s > 0.5) {
-        this.goal.setDone(true, `${t(S.goalDone)} ${num(this.push, 0)} N dari berat ${num(this.W, 0)} N.`)
+        this.goal.setDone(true, tf(S.goalDone, { p: num(this.push, 0), w: num(this.W, 0) }))
       } else {
         this.goal.setDone(false)
       }

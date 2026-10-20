@@ -182,6 +182,198 @@ async function main() {
     const maAfter = await page.$eval('.ma-badge .num', (n) => n.textContent)
     check('lever: moving the effort arm changes MA', maBefore !== maAfter, `${maBefore} -> ${maAfter}`)
 
+    /* ------------------------------------------------- lever dragging
+       Dragging an object must move the object, NOT orbit the camera.
+       (Regression test: the engine once never forwarded pointer events to
+       the lab at all, so every drag spun the scene.)                      */
+    await page.goto(`${BASE}/lab/#/lab/mechanics/lever`, { waitUntil: 'networkidle2' })
+    await sleep(2400)
+
+    const before = await page.evaluate(() => {
+      const app = window.APP
+      const lab = app.debug.lab
+      const crate = lab.root.getObjectByName('lever-crate')
+      const v = crate.position.clone()
+      crate.getWorldPosition(v)
+      v.project(app.debug.engine.camera)
+      const r = app.debug.engine.dom.getBoundingClientRect()
+      return {
+        x: r.left + ((v.x + 1) / 2) * r.width,
+        y: r.top + ((1 - v.y) / 2) * r.height,
+        azim: app.debug.engine.orbit.azim,
+        dLoad: lab.dLoad,
+      }
+    })
+
+    await page.mouse.move(before.x, before.y)
+    await page.mouse.down()
+    await page.mouse.move(before.x + 70, before.y + 6, { steps: 12 })
+    await page.mouse.up()
+    await sleep(400)
+
+    const afterDrag = await page.evaluate(() => ({
+      azim: window.APP.debug.engine.orbit.azim,
+      dLoad: window.APP.debug.lab.dLoad,
+    }))
+
+    check('lever: dragging the crate moves the crate', Math.abs(afterDrag.dLoad - before.dLoad) > 0.05,
+      `${before.dLoad.toFixed(2)} -> ${afterDrag.dLoad.toFixed(2)} m`)
+    check('lever: dragging the crate does NOT orbit the camera',
+      Math.abs(afterDrag.azim - before.azim) < 0.005,
+      `azim ${before.azim.toFixed(4)} -> ${afterDrag.azim.toFixed(4)}`)
+
+    /* dragging empty space must still orbit the camera */
+    const azimBefore = await page.evaluate(() => window.APP.debug.engine.orbit.azim)
+    await page.mouse.move(180, 170)
+    await page.mouse.down()
+    await page.mouse.move(320, 170, { steps: 12 })
+    await page.mouse.up()
+    await sleep(400)
+    const azimAfter = await page.evaluate(() => window.APP.debug.engine.orbit.azim)
+    check('lever: dragging empty space still orbits the camera',
+      Math.abs(azimAfter - azimBefore) > 0.02,
+      `azim ${azimBefore.toFixed(3)} -> ${azimAfter.toFixed(3)}`)
+
+    /* -------------------------------------------- inclined plane physics
+       30 degrees, 300 N, a 100 N push: the resultant along the slope is
+       100 - 300*sin(30) = -50 N (down the slope), and static friction
+       (mu*N = 52 N) holds the box still.                                   */
+    await page.goto(`${BASE}/lab/#/lab/mechanics/incline`, { waitUntil: 'networkidle2' })
+    await sleep(2600)
+
+    const setSliders = async (values) => {
+      await page.evaluate((vals) => {
+        const els = document.querySelectorAll('#panel input[type=range]')
+        vals.forEach((v, i) => {
+          els[i].value = String(v)
+          els[i].dispatchEvent(new Event('input', { bubbles: true }))
+        })
+      }, values)
+      await sleep(350)
+    }
+
+    const releaseButton = async () => {
+      await page.evaluate(() => {
+        const btns = [...document.querySelectorAll('#panel .btn')]
+        const b = btns.find((x) => /Release|Lepas/i.test(x.textContent))
+        b?.click()
+      })
+      await sleep(900)
+    }
+
+    /** drag the box up the ramp so it has somewhere to fall from */
+    const dragBoxUp = async () => {
+      const at = await page.evaluate(() => {
+        const app = window.APP
+        const lab = app.debug.lab
+        const block = lab.root.getObjectByName('incline-block')
+        const v = block.position.clone()
+        block.getWorldPosition(v)
+        v.project(app.debug.engine.camera)
+        const r = app.debug.engine.dom.getBoundingClientRect()
+        return {
+          x: r.left + ((v.x + 1) / 2) * r.width,
+          y: r.top + ((1 - v.y) / 2) * r.height,
+          s: lab.s,
+        }
+      })
+      await page.mouse.move(at.x, at.y)
+      await page.mouse.down()
+      await page.mouse.move(at.x + 110, at.y - 150, { steps: 14 })
+      await page.mouse.up()
+      await sleep(350)
+      return at.s
+    }
+
+    /* the readouts, in panel order */
+    const readIncline = () => page.evaluate(() => {
+      const nums = [...document.querySelectorAll('#panel .readout .v')].map((n) =>
+        parseFloat(String(n.textContent).replace(',', '.')))
+      const lab = window.APP.debug.lab
+      return {
+        normal: nums[0], friction: nums[1], along: nums[2], resultant: nums[3],
+        net: nums[4], accel: nums[5], speed: nums[6],
+        s: lab.s, v: lab.v,
+      }
+    })
+
+    await setSliders([30, 0.2, 300, 100])
+    let inc = await readIncline()
+    check('incline: normal force = W cos θ',
+      Math.abs(inc.normal - 300 * Math.cos((30 * Math.PI) / 180)) < 1, `${inc.normal} N`)
+    check('incline: weight along the slope = W sin θ', Math.abs(inc.along - 150) < 1, `${inc.along} N`)
+    check('incline: resultant = F - W sin θ is NEGATIVE', inc.resultant < -40 && inc.resultant > -60,
+      `${inc.resultant} N`)
+    check('incline: static friction balances it (net = 0)', Math.abs(inc.net) < 1, `${inc.net} N`)
+
+    /* put the box partway up the ramp, then let go — friction must hold it */
+    const sBeforeDrag = await dragBoxUp()
+    inc = await readIncline()
+    check('incline: the box can be dragged up the ramp', inc.s > sBeforeDrag + 0.3,
+      `s ${sBeforeDrag.toFixed(2)} -> ${inc.s.toFixed(2)} m`)
+    await releaseButton()
+    inc = await readIncline()
+    check('incline: box stays put when friction is enough',
+      Math.abs(inc.s - (sBeforeDrag + 0.8)) < 0.35 && Math.abs(inc.v) < 0.01,
+      `s=${inc.s.toFixed(3)} m, v=${inc.v.toFixed(3)} m/s`)
+
+    /* with no friction the box must slide DOWN the slope */
+    await setSliders([30, 0, 300, 100])
+    await dragBoxUp()
+    const sTop = (await readIncline()).s
+    await releaseButton()
+    inc = await readIncline()
+    check('incline: with no friction the box slides DOWN the slope',
+      inc.s < sTop - 0.05 && inc.v < 0,
+      `s ${sTop.toFixed(3)} -> ${inc.s.toFixed(3)} m, v=${inc.v.toFixed(3)} m/s`)
+
+    /* a push that beats gravity must send it UP */
+    await setSliders([30, 0, 300, 250])
+    await dragBoxUp()
+    const sLow = (await readIncline()).s
+    await releaseButton()
+    inc = await readIncline()
+    check('incline: a push larger than W sin θ sends the box UP',
+      inc.s > sLow + 0.05 && inc.v > 0,
+      `s ${sLow.toFixed(3)} -> ${inc.s.toFixed(3)} m, v=${inc.v.toFixed(3)} m/s`)
+
+    /* --------------------------------------------- pulley rope pulling
+       Dragging the hook down must haul the crate up — and must not orbit. */
+    await page.goto(`${BASE}/lab/#/lab/mechanics/pulley`, { waitUntil: 'networkidle2' })
+    await sleep(2600)
+
+    const hook = await page.evaluate(() => {
+      const app = window.APP
+      const lab = app.debug.lab
+      const g = lab.root.getObjectByName('pulley-hook')
+      const v = g.position.clone()
+      g.getWorldPosition(v)
+      v.project(app.debug.engine.camera)
+      const r = app.debug.engine.dom.getBoundingClientRect()
+      return {
+        x: r.left + ((v.x + 1) / 2) * r.width,
+        y: r.top + ((1 - v.y) / 2) * r.height,
+        azim: app.debug.engine.orbit.azim,
+        h: lab.h,
+      }
+    })
+
+    await page.mouse.move(hook.x, hook.y)
+    await page.mouse.down()
+    await page.mouse.move(hook.x, hook.y + 90, { steps: 14 })
+    await page.mouse.up()
+    await sleep(400)
+
+    const pulled = await page.evaluate(() => ({
+      azim: window.APP.debug.engine.orbit.azim,
+      h: window.APP.debug.lab.h,
+    }))
+    check('pulley: dragging the hook hauls the crate up', pulled.h > hook.h + 0.05,
+      `h ${hook.h.toFixed(3)} -> ${pulled.h.toFixed(3)} m`)
+    check('pulley: dragging the hook does NOT orbit the camera',
+      Math.abs(pulled.azim - hook.azim) < 0.005,
+      `azim ${hook.azim.toFixed(4)} -> ${pulled.azim.toFixed(4)}`)
+
     /* --------------------------------------------------- language in lab */
     const idStatus = await page.$eval('#panel .status', (n) => n.textContent).catch(() => '')
     await page.click('.lang-toggle')

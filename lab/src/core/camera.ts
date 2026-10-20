@@ -44,6 +44,8 @@ export class OrbitCamera {
   private pinchRadius = 0
   private lastPanX = 0
   private lastPanY = 0
+  /** true while a lab is dragging an object — the camera must not move */
+  private labDrags = false
 
   constructor(
     private camera: THREE.PerspectiveCamera,
@@ -57,7 +59,8 @@ export class OrbitCamera {
 
     this.dom.style.touchAction = 'none'
 
-    this.dom.addEventListener('pointerdown', this.handleDown)
+    /* The platform routes pointer events here through pointerDown(), so that a
+       lab gets the first chance to claim an event before the camera reacts. */
     this.dom.addEventListener('pointermove', this.handleMove)
     this.dom.addEventListener('pointerup', this.handleUp)
     this.dom.addEventListener('pointercancel', this.handleUp)
@@ -66,11 +69,47 @@ export class OrbitCamera {
   }
 
   dispose(): void {
-    this.dom.removeEventListener('pointerdown', this.handleDown)
     this.dom.removeEventListener('pointermove', this.handleMove)
     this.dom.removeEventListener('pointerup', this.handleUp)
     this.dom.removeEventListener('pointercancel', this.handleUp)
     this.dom.removeEventListener('wheel', this.handleWheel)
+  }
+
+  /**
+   * A pointer went down.
+   *
+   * @param allowOrbit false when the lab has claimed the event — the camera
+   *   then tracks the pointer but does not move, so dragging an object never
+   *   spins the scene.
+   */
+  pointerDown(e: PointerEvent, allowOrbit: boolean): void {
+    this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+    this.dom.setPointerCapture?.(e.pointerId)
+
+    if (!allowOrbit) {
+      /* the lab is dragging something — stay out of the way completely */
+      this.labDrags = true
+      this.mode = 'none'
+      return
+    }
+
+    if (this.pointers.size === 1) {
+      const wantsPan = e.button === 2 || e.button === 1 || e.shiftKey
+      this.mode = wantsPan ? 'pan' : 'orbit'
+      if (wantsPan) {
+        this.lastPanX = e.clientX
+        this.lastPanY = e.clientY
+      }
+    } else if (this.pointers.size === 2) {
+      /* do not pinch-zoom while the lab is dragging an object */
+      if (this.labDrags) return
+      this.mode = 'pinch'
+      const [a, b] = [...this.pointers.values()]
+      this.pinchStart = Math.hypot(a.x - b.x, a.y - b.y)
+      this.pinchRadius = this.wantRadius
+      this.lastPanX = (a.x + b.x) / 2
+      this.lastPanY = (a.y + b.y) / 2
+    }
   }
 
   /** Frame a scene immediately (no glide) — used when a lab opens. */
@@ -89,27 +128,6 @@ export class OrbitCamera {
   /** True while the user is actively manipulating the camera. */
   get dragging(): boolean {
     return this.mode !== 'none'
-  }
-
-  private handleDown = (e: PointerEvent): void => {
-    this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
-
-    if (this.pointers.size === 1) {
-      const wantsPan = e.button === 2 || e.button === 1 || e.shiftKey
-      this.mode = wantsPan ? 'pan' : 'orbit'
-      if (wantsPan) {
-        this.lastPanX = e.clientX
-        this.lastPanY = e.clientY
-      }
-    } else if (this.pointers.size === 2) {
-      this.mode = 'pinch'
-      const [a, b] = [...this.pointers.values()]
-      this.pinchStart = Math.hypot(a.x - b.x, a.y - b.y)
-      this.pinchRadius = this.wantRadius
-      this.lastPanX = (a.x + b.x) / 2
-      this.lastPanY = (a.y + b.y) / 2
-    }
-    this.dom.setPointerCapture?.(e.pointerId)
   }
 
   private handleMove = (e: PointerEvent): void => {
@@ -146,8 +164,10 @@ export class OrbitCamera {
 
   private handleUp = (e: PointerEvent): void => {
     this.pointers.delete(e.pointerId)
-    if (this.pointers.size === 0) this.mode = 'none'
-    else if (this.pointers.size === 1) {
+    if (this.pointers.size === 0) {
+      this.mode = 'none'
+      this.labDrags = false
+    } else if (this.pointers.size === 1) {
       this.mode = 'orbit'
       const [p] = [...this.pointers.values()]
       this.lastPanX = p.x

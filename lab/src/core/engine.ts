@@ -48,6 +48,8 @@ export class Engine {
   private host: HTMLElement
   private lights: EngineLights | null = null
   private resizeObserver: ResizeObserver | null = null
+  /** true while a lab is dragging an object — the camera must not orbit */
+  private labDragging = false
   private roomGroup: THREE.Group
   private lab: LabInstance | null = null
 
@@ -111,6 +113,35 @@ export class Engine {
     this.buildRoom()
 
     this.orbit = new OrbitCamera(this.camera, this.dom, () => this.invalidate())
+
+    /* ---- input routing ------------------------------------------------
+       The lab gets the first chance at every pointer event. If it claims
+       the event (it is dragging something) the camera is told not to orbit,
+       so dragging an object never spins the scene.                       */
+    this.dom.addEventListener('pointerdown', (e) => {
+      const consumed = this.lab ? this.lab.onPointerDown(e) : false
+      if (consumed) {
+        this.labDragging = true
+        this.dom.setPointerCapture?.(e.pointerId)
+      }
+      this.orbit.pointerDown(e, !consumed)
+    })
+
+    window.addEventListener('pointermove', (e) => {
+      if (!this.lab) return
+      /* the lab only cares about moves over the canvas, or while it drags */
+      if (e.target === this.dom || this.labDragging) this.lab.onPointerMove(e)
+    })
+
+    window.addEventListener('pointerup', (e) => {
+      if (this.lab) this.lab.onPointerUp(e)
+      this.labDragging = false
+    })
+
+    window.addEventListener('pointercancel', (e) => {
+      if (this.lab) this.lab.onPointerUp(e)
+      this.labDragging = false
+    })
 
     this.auto = new AutoQuality(
       () => this.qualityMode,

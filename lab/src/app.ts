@@ -370,9 +370,20 @@ export class App {
     ])
   }
 
+  /**
+   * A window onto the running application — used by the QA harness and handy
+   * for tinkering from the browser console.
+   */
+  get debug() {
+    return {
+      engine: this.engine,
+      lab: this.lab,
+      route: this.route,
+    }
+  }
+
   /* ------------------------------------------------------------- loop */
-  private loop(): void {
-    setInterval(() => {
+  private loop(): void {    setInterval(() => {
       if (!this.lab) return
       this.saveProgress()
       /* a lab that has been solved is marked as done */

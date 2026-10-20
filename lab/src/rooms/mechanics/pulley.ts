@@ -350,6 +350,7 @@ class PulleyLab implements LabInstance {
     this.rig.add(this.rope.mesh, this.tail.mesh)
 
     this.hook = new THREE.Group()
+    this.hook.name = 'pulley-hook'
     const ring = new THREE.Mesh(
       new THREE.TorusGeometry(0.17, 0.045, 10, 22),
       new THREE.MeshStandardMaterial({ color: 0x2fc7b6, roughness: 0.35, metalness: 0.7 }),

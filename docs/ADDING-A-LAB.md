@@ -110,6 +110,28 @@ export default function createPendulumLab(ctx: LabContext): LabInstance {
 | `serialize()` returns plain JSON | it is stored verbatim and synced to the back-end |
 | `restore()` must put the UI back too | call your slider handles' `set()` inside it |
 
+### Claiming a pointer
+
+The platform routes every pointer event to the lab **first**, and only lets
+the camera move if the lab did not want it:
+
+```ts
+onPointerDown(event: PointerEvent): boolean {
+  const hit = pick(event, this.ctx.camera, this.ctx.dom, [this.crate])
+  if (!hit.length) return false          // false → the camera may orbit
+  this.drag = { ... }                    // true  → the lab owns the drag
+  return true
+}
+```
+
+Return `true` whenever the student grabs one of your objects, and `false`
+when the pointer misses. The camera tracks the pointer either way (so a
+two-finger pinch still works), but it will not move while your lab is
+dragging.
+
+`onPointerMove` is called for every move over the canvas and for every move
+while a drag is in progress; `onPointerUp` ends the drag.
+
 ---
 
 ## 2. Register it in the catalogue
