@@ -6,7 +6,7 @@
  * from the same module the laboratory uses, so the two can never disagree.
  */
 import './landing.css'
-import { CHAPTERS } from '../lab/src/catalog/chapters'
+import { CHAPTERS } from '../lab/src/catalog'
 import { L, getLang, initLang, onLangChange, setLang, t } from '../lab/src/core/i18n'
 
 initLang()

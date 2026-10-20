@@ -1,5 +1,4 @@
 import type * as THREE from 'three'
-import type { Localized } from './i18n'
 
 /**
  * The contract every simulation and demonstration implements.
@@ -187,48 +186,7 @@ export interface GoalHandle {
 /** Semantic colour roles — kept consistent across every lab. */
 export type Tone = 'neutral' | 'input' | 'output' | 'result' | 'warn' | 'bad'
 
-/** The static description of a lab, declared next to its implementation. */
-export interface LabDef {
-  /** 'chapter.lab', e.g. 'mechanics.lever' */
-  id: string
-  /** chapter id, e.g. 'mechanics' */
-  room: string
-  title: Localized
-  blurb: Localized
-  tags: Localized[]
-  /** school grade difficulty, 1 (easy) .. 5 (hard) */
-  level: 1 | 2 | 3 | 4 | 5
-  /** which kinds of experience this lab offers */
-  mode: ('sim' | 'demo')[]
-  /** the physics the student is meant to take away */
-  concepts: Localized[]
-  estMinutes: number
-  camera?: CameraSpec
-  rendering?: LabRenderingHints
-  /** lazy load — keeps the initial download small */
-  load: () => Promise<{ default: LabFactory }>
-}
-
 export type LabFactory = (ctx: LabContext) => LabInstance
 
-/** A planned but not-yet-built lab, shown as a locked card. */
-export interface PlannedLab {
-  id: string
-  title: Localized
-  blurb: Localized
-}
 
-/** A chapter of the curriculum — one "room" in the laboratory. */
-export interface ChapterDef {
-  id: string
-  order: number
-  title: Localized
-  blurb: Localized
-  icon: string
-  accent: string
-  objectives: Localized[]
-  /** built labs */
-  labs: LabDef[]
-  /** roadmap for the labs that are still to come */
-  planned: PlannedLab[]
-}
+

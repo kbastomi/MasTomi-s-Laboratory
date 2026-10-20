@@ -1,6 +1,6 @@
-import { CHAPTERS, chapterById } from './catalog/chapters'
+import { CHAPTERS, chapterById } from './catalog'
 import { L, getLang, num, onLangChange, setLang, t } from './core/i18n'
-import type { LabDef } from './core/lab'
+import type { LabDef } from './catalog/types'
 import { store } from './core/store'
 
 /** Chapter index — the first thing a student sees. */
