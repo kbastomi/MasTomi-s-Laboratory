@@ -162,6 +162,81 @@ input[type="range"]::-moz-range-thumb {
 .row-2 .btn { width: 100%; font-size: 13px; padding: 9px 8px; }
 .row-2 .btn:nth-child(3) { grid-column: 1 / -1; }
 
+/* ------------------------------------------------------- reading options */
+.task-text {
+  font-size: 13px;
+  color: var(--ink-dim);
+  line-height: 1.55;
+  margin-bottom: 12px;
+}
+
+.options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.option {
+  padding: 11px 8px;
+  border-radius: 11px;
+  border: 1px solid var(--line);
+  background: rgba(16, 23, 33, 0.6);
+  color: var(--ink);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.option:hover { border-color: rgba(56, 214, 196, 0.45); }
+
+.option.right {
+  border-color: var(--result);
+  background: rgba(94, 224, 122, 0.16);
+  color: var(--result);
+}
+
+.option.wrong {
+  border-color: var(--bad);
+  background: rgba(255, 107, 107, 0.14);
+  color: var(--bad);
+}
+
+/* --------------------------------------------------------------- number */
+.number-row { margin-bottom: 12px; }
+
+.number-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.number-input {
+  flex: 1;
+  min-width: 0;
+  background: rgba(9, 14, 22, 0.6);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 8px 10px;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  font-size: 14px;
+}
+
+.number-input:focus {
+  outline: none;
+  border-color: var(--input);
+}
+
+.number-unit {
+  color: var(--ink-faint);
+  font-size: 12.5px;
+  min-width: 22px;
+}
+
 /* --------------------------------------------------------------- toggle */
 .toggle-row {
   display: flex;
@@ -225,6 +300,9 @@ input[type="range"]::-moz-range-thumb {
 .status.tone-result { border-color: rgba(94, 224, 122, 0.4); color: var(--result); }
 .status.tone-warn { border-color: rgba(255, 209, 102, 0.4); color: var(--warn); }
 .status.tone-bad { border-color: rgba(255, 107, 107, 0.4); color: var(--bad); }
+
+/* an empty status box is just an empty box */
+.status:empty { display: none; }
 
 /* ----------------------------------------------------------------- goal */
 .goal {

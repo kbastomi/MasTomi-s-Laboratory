@@ -66,6 +66,8 @@ export interface LabContext {
   camera: THREE.PerspectiveCamera
   /** The canvas the lab renders into, for ray picking and cursor hints. */
   dom: HTMLElement
+  /** Move the camera to frame something — used when a lab switches view. */
+  setCamera(spec: CameraSpec): void
 }
 
 /** The panel builder handed to a lab. */
@@ -87,6 +89,8 @@ export interface PanelSection {
   readout(label: string, initial?: string): Readout
   /** A slider. Returns an object with get()/set(). */
   slider(opts: SliderOptions): SliderHandle
+  /** A typed number — for recording a reading the student has read off an instrument. */
+  number(opts: NumberOptions): NumberHandle
   /** A row of mutually exclusive buttons. */
   segmented(opts: SegmentedOptions): SegmentedHandle
   /** A plain button. */
@@ -126,10 +130,30 @@ export interface SliderHandle {
   setDisabled(disabled: boolean): void
 }
 
+/** A typed number — used when the student records a reading. */
+export interface NumberOptions {
+  label: string
+  value: number
+  min?: number
+  max?: number
+  step?: number
+  /** shown after the field, e.g. 'mm' */
+  suffix?: string
+  onChange?: (value: number) => void
+}
+
+export interface NumberHandle {
+  get(): number
+  set(value: number): void
+  setDisabled(disabled: boolean): void
+}
+
 export interface SegmentedOptions {
   items: { value: string; label: string; sub?: string }[]
   value?: string
   onChange?: (value: string) => void
+  /** fixed number of columns (default: as many as fit) */
+  cols?: number
 }
 
 export interface SegmentedHandle {

@@ -142,7 +142,7 @@ nothing is lost.
 
 ## The catalogue
 
-`lab/src/catalog/chapters.ts` holds all ten chapters with their learning
+`lab/src/catalog/chapters.ts` holds all eleven chapters with their learning
 goals and their roadmap. Adding a lab is two edits in that file plus one new
 module — the engine never needs to know a chapter exists.
 

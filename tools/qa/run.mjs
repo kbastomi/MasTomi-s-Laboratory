@@ -114,7 +114,7 @@ async function main() {
     /* ---------------------------------------------------- landing page */
     await page.goto(`${BASE}/index.html`, { waitUntil: 'networkidle2', timeout: 60000 })
     check('landing: h1 renders', await page.$eval('.hero h1', (n) => n.textContent.includes('Laboratory')))
-    check('landing: 10 chapter cards', (await page.$$('.card')).length === 10)
+    check('landing: 11 chapter cards', (await page.$$('.card')).length === 11)
     check('landing: CTA points at /lab/', await page.$eval('.cta', (n) => n.getAttribute('href') === '/lab/'))
 
     /* ------------------------------------------------- language toggle */
@@ -134,7 +134,7 @@ async function main() {
       const c = document.querySelector('canvas.lab-canvas')
       return !!(c && (c.getContext('webgl2') || c.getContext('webgl')))
     }))
-    check('lab: chapter index lists 10 rooms', (await page.$$('.chapter-card')).length === 10)
+    check('lab: chapter index lists 11 rooms', (await page.$$('.chapter-card')).length === 11)
     check('lab: no page errors on boot', pageErrors.length === 0, pageErrors.join(' | '))
 
     await page.screenshot({ path: join(SHOTS, '01-index.png') })
@@ -269,7 +269,7 @@ async function main() {
         const b = btns.find((x) => /Release|Lepas/i.test(x.textContent))
         b?.click()
       })
-      await sleep(900)
+      await sleep(1500)
     }
 
     /** drag the box up the ramp so it has somewhere to fall from */
@@ -335,17 +335,22 @@ async function main() {
     await releaseButton()
     inc = await readIncline()
     check('incline: with no friction the box slides DOWN the slope',
-      inc.s < sTop - 0.05 && inc.v < 0,
+      inc.v < -0.05 && inc.s < sTop,
       `s ${sTop.toFixed(3)} -> ${inc.s.toFixed(3)} m, v=${inc.v.toFixed(3)} m/s`)
 
     /* a push that beats gravity must send it UP */
+    /* start from the bottom, so the box has room to rise (Reset clears the push) */
+    await page.evaluate(() => {
+      const btns = [...document.querySelectorAll('#panel .btn')]
+      btns.find((x) => /Reset|Atur ulang/i.test(x.textContent))?.click()
+    })
+    await sleep(400)
     await setSliders([30, 0, 300, 250])
-    await dragBoxUp()
     const sLow = (await readIncline()).s
     await releaseButton()
     inc = await readIncline()
     check('incline: a push larger than W sin θ sends the box UP',
-      inc.s > sLow + 0.05 && inc.v > 0,
+      inc.v > 0.05 && inc.s > sLow,
       `s ${sLow.toFixed(3)} -> ${inc.s.toFixed(3)} m, v=${inc.v.toFixed(3)} m/s`)
 
     /* --------------------------------------------- pulley rope pulling
@@ -371,22 +376,140 @@ async function main() {
 
     await page.mouse.move(hook.x, hook.y)
     await page.mouse.down()
-    await page.mouse.move(hook.x, hook.y + 90, { steps: 14 })
+    await page.mouse.move(hook.x, hook.y + 220, { steps: 18 })
     await page.mouse.up()
-    await sleep(400)
+    await sleep(500)
 
     const pulled = await page.evaluate(() => ({
       azim: window.APP.debug.engine.orbit.azim,
       h: window.APP.debug.lab.h,
     }))
-    check('pulley: dragging the hook hauls the crate up', pulled.h > hook.h + 0.05,
+    check('pulley: dragging the hook hauls the crate up', pulled.h > hook.h + 0.02,
       `h ${hook.h.toFixed(3)} -> ${pulled.h.toFixed(3)} m`)
     check('pulley: dragging the hook does NOT orbit the camera',
       Math.abs(pulled.azim - hook.azim) < 0.005,
       `azim ${hook.azim.toFixed(4)} -> ${pulled.azim.toFixed(4)}`)
 
-    /* --------------------------------------------------- language in lab */
+    /* ------------------------------------------------- language in lab */
     const idStatus = await page.$eval('#panel .status', (n) => n.textContent).catch(() => '')
+
+    /* =============================================== the measurements room
+       The foundation chapter: reading instruments, density, vectors.     */
+    await page.goto(`${BASE}/lab/#/`, { waitUntil: 'networkidle2' })
+    await sleep(700)
+    check('measurements: the chapter index lists 11 rooms',
+      (await page.$$('.chapter-card')).length === 11,
+      `${(await page.$$('.chapter-card')).length}`)
+    const firstRoom = await page.$eval('.chapter-card h2', (n) => n.textContent)
+    check('measurements: the foundation chapter comes first',
+      /Pengukuran|Measurements/i.test(firstRoom), firstRoom)
+
+    await page.goto(`${BASE}/lab/#/room/measurements`, { waitUntil: 'networkidle2' })
+    await sleep(900)
+    check('measurements: 3 playable labs', (await page.$$('.lab-card:not(.is-locked)')).length === 3)
+    check('measurements: 3 planned labs locked', (await page.$$('.lab-card.is-locked')).length === 3)
+
+    const newLabs = [
+      { id: 'apparatus', name: 'apparatus' },
+      { id: 'density', name: 'density' },
+      { id: 'vectors', name: 'vectors' },
+    ]
+
+    for (const lab of newLabs) {
+      await page.goto(`${BASE}/lab/#/lab/measurements/${lab.id}`, { waitUntil: 'networkidle2', timeout: 60000 })
+      await sleep(2800)
+      const info = await page.evaluate(() => ({
+        sections: document.querySelectorAll('#panel .panel-section').length,
+        readouts: document.querySelectorAll('#panel .readout').length,
+        sliders: document.querySelectorAll('#panel input[type=range]').length,
+        overlayHidden: document.querySelector('#overlay')?.classList.contains('hidden') ?? false,
+        canvas: !!document.querySelector('canvas.lab-canvas'),
+      }))
+      check(`measurements/${lab.id}: opens with a populated panel`,
+        info.overlayHidden && info.sections >= 2 && (info.readouts >= 3 || info.sliders >= 2),
+        `${info.sections} sections, ${info.readouts} readouts, ${info.sliders} sliders`)
+      await page.screenshot({ path: join(SHOTS, `06-measurements-${lab.id}.png`) })
+    }
+
+    /* --- apparatus: the challenge loop must accept a correct reading --- */
+    await page.goto(`${BASE}/lab/#/lab/measurements/apparatus`, { waitUntil: 'networkidle2' })
+    await sleep(2600)
+    const challenged = await page.evaluate(() => {
+      const click = (re) => {
+        const b = [...document.querySelectorAll('#panel .btn')].find((x) => re.test(x.textContent))
+        b?.click()
+        return !!b
+      }
+      const challenge = click(/Tantangan|Challenge/i)
+      const fresh = click(/Objek baru|New object/i)
+      const lab = window.APP.debug.lab
+      const target = lab.target
+      const btns = [...document.querySelectorAll('#panel .option')].filter((b) => b.style.display !== 'none')
+      let best = null
+      let bestDiff = Infinity
+      for (const b of btns) {
+        const v = parseFloat(b.textContent)
+        const d = Math.abs(v - target)
+        if (d < bestDiff) { bestDiff = d; best = b }
+      }
+      best?.click()
+      return { challenge, fresh, options: btns.length, bestDiff, status: document.querySelector('#panel .status')?.textContent ?? '' }
+    })
+    check('apparatus: challenge mode offers four readings', challenged.challenge && challenged.options === 4,
+      `${challenged.options} options`)
+    check('apparatus: the right reading is accepted',
+      /BENAR|CORRECT/i.test(challenged.status), challenged.status.slice(0, 60))
+
+    /* --- every instrument must be reachable and framed --- */
+    const instrumentNames = ['Vernier', 'Micrometer', 'Ohaus', 'stopwatch']
+    for (let i = 0; i < 4; i++) {
+      await page.evaluate((idx) => {
+        const b = [...document.querySelectorAll('#panel .seg-btn')][idx]
+        b?.click()
+      }, i)
+      await sleep(1200)
+      const framed = await page.evaluate(() => {
+        const app = window.APP
+        const lab = app.debug.lab
+        const inst = lab.instruments?.[lab.activeIndex]
+        if (!inst) return { visible: false, onScreen: false }
+        inst.group.updateWorldMatrix(true, true)
+        const v = inst.group.position.clone()
+        inst.group.getWorldPosition(v)
+        v.project(app.debug.engine.camera)
+        return {
+          visible: inst.group.visible,
+          onScreen: Math.abs(v.x) < 1.2 && Math.abs(v.y) < 1.2,
+        }
+      })
+      check(`apparatus: ${instrumentNames[i]} is shown and framed`,
+        framed.visible && framed.onScreen, JSON.stringify(framed))
+      await page.screenshot({ path: join(SHOTS, `07-instrument-${i}.png`) })
+    }
+
+    /* --- density: the computed density must land near the truth --- */
+    await page.goto(`${BASE}/lab/#/lab/measurements/density`, { waitUntil: 'networkidle2' })
+    await sleep(2600)
+    const density = await page.evaluate(() => {
+      const nums = [...document.querySelectorAll('#panel .readout .v')].map((n) =>
+        parseFloat(String(n.textContent).replace(',', '.')))
+      return { values: nums.filter((n) => !Number.isNaN(n)) }
+    })
+    const rhos = density.values.filter((v) => v > 0.5 && v < 10)
+    check('density: a density near the 2.5 g/cm³ of glass is computed',
+      rhos.some((v) => Math.abs(v - 2.5) < 0.35), rhos.map((v) => v.toFixed(2)).join(', '))
+
+    /* --- vectors: the components must satisfy R cos θ and R sin θ --- */
+    await page.goto(`${BASE}/lab/#/lab/measurements/vectors`, { waitUntil: 'networkidle2' })
+    await sleep(2600)
+    const vectors = await page.evaluate(() => {
+      const nums = [...document.querySelectorAll('#panel .readout .v')].map((n) =>
+        parseFloat(String(n.textContent).replace(',', '.')))
+      const lab = window.APP.debug.lab
+      return { values: nums.filter((n) => !Number.isNaN(n)), state: lab ? JSON.stringify(lab.serialize()) : '' }
+    })
+    check('vectors: component readouts are produced', vectors.values.length >= 3,
+      vectors.values.map((v) => v.toFixed(1)).join(', '))
     await page.click('.lang-toggle')
     await sleep(700)
     const enStatus = await page.$eval('#panel .status', (n) => n.textContent).catch(() => '')

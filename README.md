@@ -37,9 +37,10 @@ back-end).
 
 | Chapter | Simulations |
 |---|---|
+| **Pengukuran & Satuan** / Measurements & Units | Alat ukur (vernier, micrometer, Ohaus, stopwatch) · Massa jenis (density) · Vektor (vectors) |
 | **Mekanika** / Mechanics | Tuas (lever) · Katrol (pulley) · Bidang miring (inclined plane) |
 
-The other nine chapters — Kinematics, Dynamics, Work & Energy, Waves,
+The other ten chapters — Kinematics, Dynamics, Work & Energy, Waves,
 Optics, Thermodynamics, Electricity & Magnetism, Fluids and Modern Physics —
 are scaffolded with their learning goals and their roadmap of planned
 simulations, so the catalogue is navigable from day one.

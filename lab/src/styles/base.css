@@ -119,6 +119,17 @@ a { color: var(--input); }
 .btn:active { transform: translateY(1px); }
 
 .btn.ghost { background: rgba(16, 23, 33, 0.55); }
+
+/* the labs write "btn btn-primary" and "btn btn-ghost" — match those names */
+.btn-primary {
+  background: linear-gradient(180deg, rgba(56, 214, 196, 0.28), rgba(56, 214, 196, 0.16));
+  border-color: rgba(56, 214, 196, 0.5);
+  color: #d6fff9;
+  font-weight: 600;
+}
+
+.btn-ghost { background: rgba(16, 23, 33, 0.55); }
+
 .btn.primary {
   background: linear-gradient(180deg, rgba(56, 214, 196, 0.28), rgba(56, 214, 196, 0.16));
   border-color: rgba(56, 214, 196, 0.5);

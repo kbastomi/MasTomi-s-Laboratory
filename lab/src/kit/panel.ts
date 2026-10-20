@@ -1,6 +1,8 @@
 import type {
   ButtonOptions,
   GoalHandle,
+  NumberHandle,
+  NumberOptions,
   PanelContext,
   PanelSection,
   Readout,
@@ -72,6 +74,11 @@ class SectionBuilder implements PanelSection {
   }
 
   slider(opts: SliderOptions): SliderHandle {
+    return this.sliderRow(opts).handle
+  }
+
+  /** A slider plus a small numeric field, so the student can type an exact value. */
+  sliderRow(opts: SliderOptions): { handle: SliderHandle; input: HTMLInputElement } {
     const row = document.createElement('div')
     row.className = 'slider-row'
     const head = document.createElement('div')
@@ -103,7 +110,7 @@ class SectionBuilder implements PanelSection {
     })
     refresh()
 
-    const api: SliderHandle = {
+    const handle: SliderHandle = {
       get: () => parseFloat(input.value),
       set: (v: number) => {
         input.value = String(Math.min(parseFloat(input.max), Math.max(parseFloat(input.min), v)))
@@ -112,19 +119,64 @@ class SectionBuilder implements PanelSection {
       setRange: (min: number, max: number) => {
         input.min = String(min)
         input.max = String(max)
-        api.set(api.get())
+        handle.set(handle.get())
       },
       setDisabled: (disabled: boolean) => {
         input.disabled = disabled
         row.classList.toggle('is-disabled', disabled)
       },
     }
+    return { handle, input }
+  }
+
+  number(opts: NumberOptions): NumberHandle {
+    const row = document.createElement('div')
+    row.className = 'slider-row number-row'
+    const head = document.createElement('div')
+    head.className = 'slider-head'
+    const name = document.createElement('span')
+    name.className = 'name'
+    name.textContent = opts.label
+    head.append(name)
+
+    const wrap = document.createElement('div')
+    wrap.className = 'number-wrap'
+    const input = document.createElement('input')
+    input.type = 'number'
+    input.className = 'number-input'
+    input.step = String(opts.step ?? 'any')
+    if (opts.min !== undefined) input.min = String(opts.min)
+    if (opts.max !== undefined) input.max = String(opts.max)
+    input.value = String(opts.value)
+    input.setAttribute('aria-label', opts.label)
+    wrap.appendChild(input)
+    if (opts.suffix) {
+      const unit = document.createElement('span')
+      unit.className = 'number-unit'
+      unit.textContent = opts.suffix
+      wrap.appendChild(unit)
+    }
+
+    row.append(head, wrap)
+    this.host.appendChild(row)
+
+    const api: NumberHandle = {
+      get: () => parseFloat(input.value),
+      set: (value: number) => { input.value = String(value) },
+      setDisabled: (disabled: boolean) => {
+        input.disabled = disabled
+        row.classList.toggle('is-disabled', disabled)
+      },
+    }
+    input.addEventListener('change', () => opts.onChange?.(api.get()))
+    input.addEventListener('input', () => opts.onChange?.(api.get()))
     return api
   }
 
   segmented(opts: SegmentedOptions): SegmentedHandle {
     const wrap = document.createElement('div')
     wrap.className = 'seg'
+    if (opts.cols) wrap.style.gridTemplateColumns = `repeat(${opts.cols}, 1fr)`
     this.host.appendChild(wrap)
 
     const buttons = opts.items.map((item) => {

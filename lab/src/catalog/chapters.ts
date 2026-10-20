@@ -10,8 +10,103 @@ import type { ChapterDef } from '../core/lab'
  */
 export const CHAPTERS: ChapterDef[] = [
   {
-    id: 'mechanics',
+    id: 'measurements',
     order: 1,
+    title: L('Pengukuran & Satuan', 'Measurements & Units'),
+    blurb: L(
+      'Dasar seluruh ilmu alam: mengukur besaran, membandingkannya dengan acuan, dan membaca alat ukur.',
+      'The foundation of all science: measuring a quantity, comparing it with a standard, and reading an instrument.',
+    ),
+    icon: '📐',
+    accent: '#f6d365',
+    objectives: [
+      L('Membaca skala alat ukur dan menulis hasil pengukuran beserta satuannya.', 'Read instrument scales and write a measurement with its unit.'),
+      L('Menghitung massa jenis dari hasil pengukuran massa dan volume.', 'Calculate density from measured mass and volume.'),
+      L('Mengubah besaran vektor menjadi komponen dan menjumlahkan dua vektor.', 'Resolve a vector into components and add two vectors.'),
+    ],
+    labs: [
+      {
+        id: 'measurements.apparatus',
+        room: 'measurements',
+        title: L('Alat Ukur', 'Measuring Instruments'),
+        blurb: L(
+          'Jangka pengukur, mikrometer sekrup, timbangan Ohaus, dan stopwatch analog. Baca skalaannya seperti yang dilakukan di lab.',
+          'Vernier caliper, micrometer, Ohaus balance and an analog stopwatch. Read their scales the way you would in a real laboratory.',
+        ),
+        tags: [L('alat ukur', 'instruments'), L('ketelitian', 'precision'), L('skala', 'scale')],
+        level: 1,
+        mode: ['sim', 'demo'],
+        concepts: [
+          L('Pembacaan = skala utama + divisi kecil', 'reading = main scale + small division'),
+          L('Jangka: 1 divisi = 0,1 mm', 'Vernier: 1 division = 0.1 mm'),
+          L('Mikrometer: 1 divisi = 0,01 mm', 'Micrometer: 1 division = 0.01 mm'),
+        ],
+        estMinutes: 15,
+        camera: { target: [2.9, 0.1, 0], radius: 8.2, azim: 0, polar: 0.62 },
+        load: () => import('../rooms/measurements/apparatus'),
+      },
+      {
+        id: 'measurements.density',
+        room: 'measurements',
+        title: L('Massa Jenis', 'Density'),
+        blurb: L(
+          'Ukur massa dan volume benda kaca, lalu hitung massa jenisnya — beserta ketidakpastian pembukurannya.',
+          'Measure the mass and volume of a glass object, then calculate its density — and how uncertain that density is.',
+        ),
+        tags: [L('massa jenis', 'density'), L('volume', 'volume'), L('ketidakpastian', 'uncertainty')],
+        level: 2,
+        mode: ['sim', 'demo'],
+        concepts: [
+          L('ρ = m / V', 'ρ = m / V'),
+          L('δρ/ρ = δm/m + δV/V', 'δρ/ρ = δm/m + δV/V'),
+          L('kaca ≈ 2,5 g/cm³', 'glass ≈ 2.5 g/cm³'),
+        ],
+        estMinutes: 12,
+        camera: { target: [0, 1.2, 0], radius: 8, azim: 0, polar: 1.25 },
+        load: () => import('../rooms/measurements/density'),
+      },
+      {
+        id: 'measurements.vectors',
+        room: 'measurements',
+        title: L('Vektor', 'Vectors'),
+        blurb: L(
+          'Uraikan vektor menjadi komponen x dan y, lalu jumlahkan dua vektor dengan aturan paralelogram.',
+          'Resolve a vector into x and y components, then add two vectors with the parallelogram rule.',
+        ),
+        tags: [L('vektor', 'vectors'), L('komponen', 'components'), L('resultan', 'resultant')],
+        level: 2,
+        mode: ['sim', 'demo'],
+        concepts: [
+          L('Ax = R cos θ,  Ay = R sin θ', 'Ax = R cos θ,  Ay = R sin θ'),
+          L('R = A + B', 'R = A + B'),
+          L('|R| = √(Rx² + Ry²)', '|R| = √(Rx² + Ry²)'),
+        ],
+        estMinutes: 12,
+        camera: { target: [0, 0.6, 0], radius: 9, azim: 0, polar: 1.05 },
+        load: () => import('../rooms/measurements/vectors'),
+      },
+    ],
+    planned: [
+      {
+        id: 'measurements.error',
+        title: L('Kesalahan Pengukuran', 'Measurement Error'),
+        blurb: L('Galat absolut, galat relatif, dan cara membulatkan hasil.', 'Absolute and relative error, and how to round a result.'),
+      },
+      {
+        id: 'measurements.conversion',
+        title: L('Konversi Satuan', 'Unit Conversion'),
+        blurb: L('Satuan SI, prefiks, dan mengubah antar satuan.', 'SI units, prefixes, and converting between them.'),
+      },
+      {
+        id: 'measurements.dimensional',
+        title: L('Analisis Dimensi', 'Dimensional Analysis'),
+        blurb: L('Memeriksa apakah satuan sebuah rumus masuk akal.', 'Checking that the units of a formula make sense.'),
+      },
+    ],
+  },
+  {
+    id: 'mechanics',
+    order: 2,
     title: L('Mekanika', 'Mechanics'),
     blurb: L(
       'Mesin sederhana: cara manusia memperoleh keuntungan terhadap gaya dan gerak.',
@@ -106,7 +201,7 @@ export const CHAPTERS: ChapterDef[] = [
   },
   {
     id: 'kinematics',
-    order: 2,
+    order: 3,
     title: L('Kinematika', 'Kinematics'),
     blurb: L(
       'Geraknya seperti apa: posisi, kecepatan, percepatan — tanpa menjawab “mengapa”.',
@@ -140,7 +235,7 @@ export const CHAPTERS: ChapterDef[] = [
   },
   {
     id: 'dynamics',
-    order: 3,
+    order: 4,
     title: L('Dinamika', 'Dynamics'),
     blurb: L(
       'Mengapa benda bergerak seperti itu — gaya, momentum, dan tumbukan.',
@@ -174,7 +269,7 @@ export const CHAPTERS: ChapterDef[] = [
   },
   {
     id: 'energy',
-    order: 4,
+    order: 5,
     title: L('Usaha & Energi', 'Work & Energy'),
     blurb: L(
       'Energi berpindah dari satu bentuk ke bentuk lain — dan bagaimana kerja dihitung.',
@@ -208,7 +303,7 @@ export const CHAPTERS: ChapterDef[] = [
   },
   {
     id: 'waves',
-    order: 5,
+    order: 6,
     title: L('Gelombang', 'Waves'),
     blurb: L(
       'Getaran yang merambat: gelombang tali, gelombang berdiri, dan suara.',
@@ -242,7 +337,7 @@ export const CHAPTERS: ChapterDef[] = [
   },
   {
     id: 'optics',
-    order: 6,
+    order: 7,
     title: L('Optika', 'Optics'),
     blurb: L(
       'Perjalanan cahaya: pantulan, pembiasan, dan disperse.',
@@ -276,7 +371,7 @@ export const CHAPTERS: ChapterDef[] = [
   },
   {
     id: 'thermo',
-    order: 7,
+    order: 8,
     title: L('Termodinamika', 'Thermodynamics'),
     blurb: L(
       'Suhu, kalor, dan perubahan wujud — serta cara mesin kalor mengubah panas jadi kerja.',
@@ -310,7 +405,7 @@ export const CHAPTERS: ChapterDef[] = [
   },
   {
     id: 'emag',
-    order: 8,
+    order: 9,
     title: L('Listrik & Magnet', 'Electricity & Magnetism'),
     blurb: L(
       'Arus listrik, medan magnet, dan cara keduanya bertemu di motor.',
@@ -344,7 +439,7 @@ export const CHAPTERS: ChapterDef[] = [
   },
   {
     id: 'fluids',
-    order: 9,
+    order: 10,
     title: L('Fluida', 'Fluids'),
     blurb: L(
       'Cairan dan gas: tekanan, gaya apung, dan aliran.',
@@ -378,7 +473,7 @@ export const CHAPTERS: ChapterDef[] = [
   },
   {
     id: 'modern',
-    order: 10,
+    order: 11,
     title: L('Fisika Modern', 'Modern Physics'),
     blurb: L(
       'Dunia kuantum: atom, foton, dan radioaktivitas.',

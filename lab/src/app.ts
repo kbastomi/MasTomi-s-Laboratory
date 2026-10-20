@@ -3,7 +3,7 @@ import { CHAPTERS, chapterById, labById } from './catalog/chapters'
 import { api } from './core/api'
 import { Engine } from './core/engine'
 import { onLangChange, t } from './core/i18n'
-import type { LabDef, LabInstance } from './core/lab'
+import type { CameraSpec, LabDef, LabInstance } from './core/lab'
 import { L } from './core/i18n'
 import { Router, type Route } from './core/router'
 import { buildShowcase } from './core/showcase'
@@ -278,6 +278,11 @@ export class App {
     this.root.classList.add('panel-open')
     this.panelBuilder = new PanelBuilder(this.panelEl)
 
+    /* The catalogue's framing is the default… */
+    if (def.camera) {
+      this.engine.orbit.frame(def.camera.target, def.camera.radius, def.camera.azim, def.camera.polar)
+    }
+
     const factory = mod.default as unknown as (ctx: never) => LabInstance
     const instance = factory({
       invalidate: () => this.engine.invalidate(),
@@ -285,12 +290,17 @@ export class App {
       panel: this.panelBuilder,
       camera: this.engine.camera,
       dom: this.engine.dom,
+      setCamera: (spec: CameraSpec) => {
+        this.engine.orbit.frame(spec.target, spec.radius, spec.azim, spec.polar)
+        this.engine.invalidate()
+      },
     } as never)
 
     this.lab = instance
     this.engine.mountLab(instance, def.rendering?.shadows !== false)
     instance.buildPanel(this.panelBuilder)
-    if (def.camera) this.engine.orbit.frame(def.camera.target, def.camera.radius, def.camera.azim, def.camera.polar)
+    /* …but a lab may re-frame the camera, because it knows its own geometry
+       better than a catalogue entry can. */
 
     /* restore any saved progress */
     const saved = store.get(def.id)
