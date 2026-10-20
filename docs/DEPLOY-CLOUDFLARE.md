@@ -5,8 +5,23 @@ This repository is the **root of the domain**. The landing page is served at
 
 | URL | File |
 |---|---|
-| `https://your-domain/` | `index.html` (the landing page) |
-| `https://your-domain/lab/` | `lab/index.html` (the laboratory) |
+| `https://mastomi.my.id/` | `index.html` (the landing page) |
+| `https://mastomi.my.id/lab/` | `lab/index.html` (the laboratory) |
+
+## This deployment
+
+| | |
+|---|---|
+| Pages project | `mastomi-laboratory` |
+| Pages hostname | `mastomi-laboratory.pages.dev` |
+| Custom domains | `mastomi.my.id`, `lab.mastomi.my.id` |
+| Source | GitHub — `kbastomi/MasTomi-s-Laboratory`, production branch `main` |
+| Build command | `npm run build` |
+| Output directory | `dist` |
+| Environment | `NODE_VERSION=22` |
+
+Every push to `main` builds and deploys automatically. Pull requests get
+their own preview URL.
 
 ---
 
