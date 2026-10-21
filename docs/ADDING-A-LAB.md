@@ -136,7 +136,8 @@ while a drag is in progress; `onPointerUp` ends the drag.
 
 ## 2. Register it in the catalogue
 
-Open `lab/src/catalog/chapters.ts` and add it to the chapter's `labs` array:
+Each chapter is a file of its own under `lab/src/catalog/chapters/`. Open the
+chapter's file and add the lab to its `labs` array:
 
 ```ts
 {
@@ -151,15 +152,17 @@ Open `lab/src/catalog/chapters.ts` and add it to the chapter's `labs` array:
   concepts: [L('T = 2π√(L/g)', 'T = 2π√(L/g)')],
   estMinutes: 8,
   camera: { target: [0, 1.5, 0], radius: 8, azim: 0, polar: 1.35 },
-  load: () => import('../rooms/dynamics/pendulum'),
+  load: () => import('../../rooms/dynamics/pendulum'),
 }
 ```
 
-That is the whole integration. The chapter page, the search, the progress
-tracking and the language switch all pick it up automatically.
+That is the whole integration. The chapter page, the catalogue sweep in the
+QA suite, the progress tracking and the language switch all pick it up
+automatically.
 
-If the chapter does not exist yet, add it to `CHAPTERS` with an empty `labs`
-array and a `planned` list.
+If the chapter does not exist yet, add a file
+`lab/src/catalog/chapters/<id>.ts` exporting a `ChapterDef`, and list it in
+`lab/src/catalog/index.ts`.
 
 ---
 
@@ -192,12 +195,17 @@ Colour roles are consistent across the whole laboratory:
 ```powershell
 npm run typecheck     # types
 npm run build         # production build
-npm run qa            # headless Chrome checks + screenshots
+npm run qa            # every suite
+npm run qa -- mechanics   # just one suite
 ```
 
-`npm run qa` writes screenshots to `tools/qa/shots/`. Add a check for your new
-lab in `tools/qa/run.mjs` so a regression is caught before it reaches a
-student.
+The QA suite is split into suites under `tools/qa/suites/`, so a single room
+can be checked on its own. `tools/qa/suites/rooms.mjs` sweeps **every lab in
+the catalogue** and opens it — so a typo in your `load()` import fails the
+build instead of reaching a student.
+
+`npm run qa` writes screenshots to `tools/qa/shots/`. Add a check for your
+new lab in the matching suite so a regression is caught before it ships.
 
 ---
 

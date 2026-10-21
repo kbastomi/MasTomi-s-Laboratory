@@ -50,13 +50,22 @@ lab/src/
     objects.ts        crates, sheaves, plates, rope
     picking.ts        ray picking helpers
     plot.ts           the 2D graph panel (v–t, x–t, F–t)
-  catalog/chapters.ts the curriculum: 10 chapters, their labs and roadmap
-  rooms/mechanics/   the built labs (lever, pulley, inclined plane)
+  catalog/
+    index.ts          assembles the chapters and exports the lookups
+    types.ts          LabDef, PlannedLab, ChapterDef
+    chapters/         one file per chapter
+  rooms/
+    mechanics/        lever · pulley · incline
+    measurements/     apparatus · density · vectors
+                      instruments/  — one file per measuring instrument
   styles/            base.css + components.css
 server/               the optional Node backend (zero npm dependencies)
 tools/
   export-conversations.mjs   dumps the OpenCode sessions into docs/conversations
-  qa/run.mjs                 headless-Chrome checks against the real build
+  qa/run.mjs                 the QA runner
+  qa/lib/harness.mjs         the shared QA helpers
+  qa/suites/                 landing · rooms · mechanics · kinematics ·
+                             measurements · mobile
 docs/                 architecture, how to add a lab, deployment guides
 ```
 
@@ -142,9 +151,13 @@ nothing is lost.
 
 ## The catalogue
 
-`lab/src/catalog/chapters.ts` holds all eleven chapters with their learning
-goals and their roadmap. Adding a lab is two edits in that file plus one new
-module — the engine never needs to know a chapter exists.
+`lab/src/catalog/` holds all eleven chapters, one file per chapter. Each
+chapter owns its learning goals, its built simulations and its roadmap, so
+adding a lab is a change to a single file in a single directory — two people
+working on different chapters never collide. The catalogue's own types live
+in `catalog/types.ts`; `core/lab.ts` keeps only the runtime contract a
+simulation implements, so the dependency direction is explicit: the catalogue
+depends on the core, never the other way round.
 
 Each chapter knows three kinds of lab:
 
