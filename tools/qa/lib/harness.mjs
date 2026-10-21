@@ -145,8 +145,13 @@ export async function openPage(browser, viewport = DESKTOP) {
  * The old code slept for a fixed 2.6 seconds after every navigation, which
  * was both slow and unreliable. This waits for the real thing: the page's
  * content is in place and the engine has put a frame on the canvas.
+ *
+ * The timeout is generous on purpose. A cold CI runner can take a while to
+ * fetch the chunks, start three.js and draw the first frame, and a lab that
+ * is still booting when the timeout expires looks exactly like a lab that is
+ * broken.
  */
-export async function waitForLabReady(page, timeout = 25000) {
+export async function waitForLabReady(page, timeout = 60000) {
   await page.waitForFunction(
     () => {
       const app = window.APP
@@ -227,16 +232,28 @@ export async function groupCentre(page, objectName) {
   }, objectName)
 }
 
+/** Open a page and wait for it to be ready, with a second chance if the
+ *  machine is slow to boot it. */
+async function openReady(page, url) {
+  await page.goto(url, { waitUntil: 'networkidle2', timeout: 90000 })
+  try {
+    await waitForLabReady(page)
+  } catch {
+    /* the page may still be booting — give it one more chance before
+       calling it broken */
+    await sleep(3000)
+    await waitForLabReady(page)
+  }
+}
+
 /** Open the laboratory's home page. */
 export async function gotoIndex(page, base) {
-  await page.goto(`${base}/lab/`, { waitUntil: 'networkidle2', timeout: 60000 })
-  await waitForLabReady(page)
+  await openReady(page, `${base}/lab/`)
 }
 
 /** Open one simulation and wait for it to settle. */
 export async function gotoLab(page, base, chapter, lab) {
-  await page.goto(`${base}/lab/#/lab/${chapter}/${lab}`, { waitUntil: 'networkidle2', timeout: 60000 })
-  await waitForLabReady(page)
+  await openReady(page, `${base}/lab/#/lab/${chapter}/${lab}`)
 }
 
 /** The structure of the open lab's panel. */

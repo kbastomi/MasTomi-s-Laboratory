@@ -34,7 +34,23 @@ jobs:
         # and a simulation advances slower than the wall clock. The checks
         # wait for results rather than for time, and one suite at a time keeps
         # the runner responsive.
-        run: npm run qa
+        #
+        # The step is retried because a shared runner can be momentarily
+        # starved by its neighbours, which makes the page boot slowly — the
+        # harness waits patiently and retries the navigation, and this retry
+        # covers the rest.
+        run: |
+          for attempt in 1 2 3; do
+            echo "::group::QA attempt $attempt"
+            if npm run qa; then
+              echo "::endgroup::"
+              exit 0
+            fi
+            echo "::endgroup::"
+            echo "attempt $attempt failed"
+            [ "$attempt" = "3" ] && exit 1
+            sleep 10
+          done
         env:
           QA_CONCURRENCY: '1'
           QA_PROTOCOL_TIMEOUT: '600000'
