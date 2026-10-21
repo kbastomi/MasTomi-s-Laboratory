@@ -17,6 +17,15 @@ import { C, disposeObject, makeArrow } from '../../kit/arrows'
 import { makeLabel } from '../../kit/labels'
 import { hover, pick } from '../../kit/picking'
 
+/**
+ * Projectile motion — one launch, two independent motions.
+ *
+ * The stage is a fixed sixteen-unit measuring field; the metre scale auto-fits
+ * the current speed and target so the whole flight stays on screen. A
+ * catalogue entry may frame it with
+ * `{ target: [6.9, 2.2, 0], radius: 18.5, azim: 0, polar: 1.3 }`.
+ */
+
 /* ------------------------------------------------------------------ scene */
 /** Radius of the ball in world units. The physics starts at y = 0, so the
  *  ball is drawn with its centre one radius above the ground. */
@@ -37,7 +46,7 @@ const SIM_H = 1 / 240
 /** Quadratic drag coefficient per metre; a light ball at school-lab speeds. */
 const DRAG_K = 0.0085
 /** World units per metre-per-second for the launch-vector drawing. */
-const ARROW_SCALE = 0.075
+const ARROW_SCALE = 0.09
 const ARC_STEPS = 32
 const START_V = 20
 const START_THETA = 45
@@ -118,7 +127,10 @@ const S = {
   targetAt: L('Target  {d} m', 'Target  {d} m'),
   targetValue: L('Target berada di', 'Target stands at'),
   targetZone: L('Zona pendaratan', 'Landing zone'),
-  targetIdle: L('Seret tiang target di tanah, lalu luncurkan bola.', 'Drag the target post along the ground, then launch the ball.'),
+  targetIdle: L(
+    'Seret tiang target di tanah (atau pakai slider), lalu luncurkan bola.',
+    'Drag the target post along the ground (or use the slider), then launch the ball.',
+  ),
   targetFlying: L('Bola sedang terbang…', 'Ball in flight…'),
   targetHit: L('TEPAT SASARAN', 'BULLSEYE'),
   targetShort: L('KURANG {d} m', 'SHORT BY {d} m'),
@@ -182,7 +194,7 @@ const S = {
       '(kembali ke y = 0): <code>t = 2 v₀ sin θ / g</code>. Jangkauan adalah kecepatan mendatar dikali waktu: ' +
       '<code>R = v₀² sin 2θ / g</code>. Tinggi maksimum terjadi saat <code>v_y = 0</code>, yaitu pada t/2, ' +
       'dan <code>H = v₀² sin²θ / (2g)</code>. Di ruang hampa, jangkauan terbesar ada pada θ = 45°.<br><br>' +
-      'Hambatan udara mengubahnya: gaya hambat <code>−k v |v|</code> melawan arah kecepatan, sehingga kedua ' +
+      'Hambatan udara mengubahnya: percepatan hambat <code>−k v |v|</code> melawan arah kecepatan, sehingga kedua ' +
       'sumbu tidak lagi terpisah. Lintasannya bukan parabola sempurna, jangkauannya lebih pendek, sudut ' +
       'tumbuknya lebih curam, dan sudut terbaiknya sedikit di bawah 45°.',
     '<b>One motion, two axes.</b> A projectile is two straight-line motions running at once. ' +
@@ -193,9 +205,9 @@ const S = {
       'motion (returning to y = 0): <code>t = 2 v₀ sin θ / g</code>. The range is the horizontal speed times ' +
       'that time: <code>R = v₀² sin 2θ / g</code>. The maximum height happens when <code>v_y = 0</code>, at ' +
       't/2, and <code>H = v₀² sin²θ / (2g)</code>. In a vacuum the greatest range comes at θ = 45°.<br><br>' +
-      'Air resistance changes the picture: a drag force <code>−k v |v|</code> opposes the velocity, so the axes ' +
-      'are no longer independent. The path is not a perfect parabola, the range is shorter, the impact angle ' +
-      'is steeper, and the best launch angle drops a little below 45°.',
+      'Air resistance changes the picture: a drag acceleration <code>−k v |v|</code> opposes the velocity, so ' +
+      'the axes are no longer independent. The path is not a perfect parabola, the range is shorter, the impact ' +
+      'angle is steeper, and the best launch angle drops a little below 45°.',
   ),
 }
 
@@ -215,7 +227,6 @@ class ProjectileLab implements LabInstance {
   private arrowVy!: ReturnType<typeof makeArrow>
   private projLine!: THREE.LineSegments
   private thetaArc!: THREE.Line
-  private thetaLabel!: ReturnType<typeof makeLabel>
 
   private apexGroup!: THREE.Group
   private apexLine!: THREE.Line
@@ -290,7 +301,7 @@ class ProjectileLab implements LabInstance {
     this.layout()
     /* The field is sixteen units wide and the panel takes the right side of
        the screen; frame it once so the catalogue does not have to guess. */
-    this.ctx.setCamera({ target: [7.6, 2.6, 0], radius: 17, azim: 0, polar: 1.3 })
+    this.ctx.setCamera({ target: [6.9, 2.2, 0], radius: 18.5, azim: 0, polar: 1.3 })
     /* note: do NOT build the panel here — the platform calls buildPanel() */
   }
 
@@ -342,7 +353,7 @@ class ProjectileLab implements LabInstance {
     G.add(centre)
 
     const start = new THREE.Mesh(
-      new THREE.BoxGeometry(0.05, 0.012, 4.2),
+      new THREE.BoxGeometry(0.05, 0.012, 2.4),
       new THREE.MeshBasicMaterial({ color: 0x2f8a80 }),
     )
     start.position.set(0, 0.012, 0)
@@ -439,9 +450,9 @@ class ProjectileLab implements LabInstance {
     /* The decomposition is the lesson: the neutral arrow is v₀ itself, the
        teal one is the part that never changes, the orange one is the part
        gravity eats away. */
-    this.arrowV0 = makeArrow('#e6eef8', { labelSide: 0.62, radius: 0.045, headLen: 0.28 })
-    this.arrowVx = makeArrow(C.input, { labelSide: -0.55, radius: 0.048, headLen: 0.28 })
-    this.arrowVy = makeArrow(C.output, { labelSide: -0.55, radius: 0.048, headLen: 0.28 })
+    this.arrowV0 = makeArrow('#e6eef8', { labelSide: 0.7, radius: 0.045, headLen: 0.28 })
+    this.arrowVx = makeArrow(C.input, { labelSide: -0.6, radius: 0.048, headLen: 0.28 })
+    this.arrowVy = makeArrow(C.output, { labelSide: -0.6, radius: 0.048, headLen: 0.28 })
     G.add(this.arrowV0, this.arrowVx, this.arrowVy)
 
     const projGeo = new THREE.BufferGeometry()
@@ -470,9 +481,6 @@ class ProjectileLab implements LabInstance {
     )
     this.thetaArc.frustumCulled = false
     G.add(this.thetaArc)
-
-    this.thetaLabel = makeLabel('', { color: C.neutral, size: 30, scale: 0.0042 })
-    G.add(this.thetaLabel)
   }
 
   private buildMarkers(): void {
@@ -628,6 +636,14 @@ class ProjectileLab implements LabInstance {
 
   private buildRuler(): void {
     const G = this.root
+
+    /* a continuous baseline turns the ticks into a readable ruler */
+    const base = new THREE.Mesh(
+      new THREE.BoxGeometry(FIELD_W, 0.012, 0.026),
+      new THREE.MeshBasicMaterial({ color: 0x8fa3bd, transparent: true, opacity: 0.7 }),
+    )
+    base.position.set(FIELD_W / 2, 0.009, 0.55)
+    G.add(base)
 
     this.rulerPos = new Float32Array(MAX_RULER)
     const geo = new THREE.BufferGeometry()
@@ -807,16 +823,16 @@ class ProjectileLab implements LabInstance {
     vOrigin.set(0, BALL_R + 0.02, oz)
 
     vDir.set(Math.cos(th), Math.sin(th), 0)
+    this.arrowV0.setLabel('v₀')
     this.arrowV0.set(vOrigin, vDir, this.v0 * ARROW_SCALE)
-    this.arrowV0.setLabel(`v₀ = ${num(this.v0, 1)} m/s`)
 
     vDir.set(1, 0, 0)
     this.arrowVx.set(vOrigin, vDir, vx * ARROW_SCALE)
-    this.arrowVx.setLabel(`v₀x = ${num(vx, 2)} m/s`)
+    this.arrowVx.setLabel('v₀x')
 
     vDir.set(0, 1, 0)
     this.arrowVy.set(vOrigin, vDir, vy * ARROW_SCALE)
-    this.arrowVy.setLabel(`v₀y = ${num(vy, 2)} m/s`)
+    this.arrowVy.setLabel('v₀y')
 
     /* The dashed right-angle bracket: from the horizontal tip up to the
        resultant, then across to the vertical tip. */
@@ -839,27 +855,23 @@ class ProjectileLab implements LabInstance {
     attr.needsUpdate = true
     this.projLine.position.copy(vOrigin)
     this.projLine.computeLineDistances()
+    /* at a purely horizontal or vertical launch the bracket collapses onto
+       the arrow itself, so it would only add clutter */
+    this.projLine.visible = this.thetaDeg > 0.5 && this.thetaDeg < 89.5
 
     const arcAttr = this.thetaArc.geometry.getAttribute('position') as THREE.BufferAttribute
     const arc = arcAttr.array as Float32Array
+    /* keep the angle mark tied to the arrow, not to a fixed world size */
+    const arcR = clamp(this.v0 * ARROW_SCALE * 0.5, 0.3, 1.5)
     for (let i = 0; i <= ARC_STEPS; i++) {
       const ang = (th * i) / ARC_STEPS
-      arc[i * 3] = Math.cos(ang)
-      arc[i * 3 + 1] = Math.sin(ang)
+      arc[i * 3] = Math.cos(ang) * arcR
+      arc[i * 3 + 1] = Math.sin(ang) * arcR
       arc[i * 3 + 2] = 0
     }
     arcAttr.needsUpdate = true
     this.thetaArc.position.copy(vOrigin)
     this.thetaArc.visible = this.thetaDeg > 0.5
-
-    const mid = th * 0.3
-    this.thetaLabel.position.set(
-      Math.cos(mid) * 1.16,
-      BALL_R + 0.02 + Math.sin(mid) * 1.16,
-      oz + 0.06,
-    )
-    this.thetaLabel.userData.setText(`θ = ${num(this.thetaDeg, 1)}°`)
-    this.thetaLabel.visible = this.thetaDeg > 0.5
   }
 
   private fillTrail(): void {
@@ -1034,7 +1046,7 @@ class ProjectileLab implements LabInstance {
       step: 0.1,
       suffix: 'm',
       onChange: (v) => {
-        this.answer = v
+        this.answer = Number.isFinite(v) ? Math.max(0, v) : 0
         this.answerState = 'none'
         this.syncHud(true)
       },
@@ -1138,7 +1150,7 @@ class ProjectileLab implements LabInstance {
 
   private checkAnswer(): void {
     const entered = this.nAnswer ? this.nAnswer.get() : this.answer
-    if (!Number.isFinite(entered)) {
+    if (!Number.isFinite(entered) || entered <= 0) {
       this.answerState = 'none'
       this.syncHud(true)
       this.statusAnswer?.set(
@@ -1168,9 +1180,16 @@ class ProjectileLab implements LabInstance {
   }
 
   /* ---------------------------------------------------------- interaction */
+  /** The label is a sprite; only solid parts of the post may be grabbed. */
+  private targetHits(event: PointerEvent): THREE.Intersection[] {
+    return pick(event, this.ctx.camera, this.ctx.dom, [this.targetGroup]).filter(
+      (hit) => (hit.object as THREE.Mesh).isMesh,
+    )
+  }
+
   onPointerDown(event: PointerEvent): boolean {
     if (event.button !== 0) return false
-    const hits = pick(event, this.ctx.camera, this.ctx.dom, [this.targetGroup])
+    const hits = this.targetHits(event)
     if (!hits.length) return false
     const ground = pick(event, this.ctx.camera, this.ctx.dom, [this.groundPick])
     if (!ground.length) return false
@@ -1178,6 +1197,8 @@ class ProjectileLab implements LabInstance {
     /* grabbing the target cancels a shot in progress; the ground offset keeps
        the post from jumping to the pointer on the first move */
     this.toAim()
+    this.syncHud(true)
+    this.ctx.invalidate()
     this.dragTarget = { offset: this.target - ground[0].point.x / this.scale }
     this.ctx.dom.style.cursor = 'grabbing'
     return true
@@ -1185,7 +1206,7 @@ class ProjectileLab implements LabInstance {
 
   onPointerMove(event: PointerEvent): void {
     if (!this.dragTarget) {
-      const hits = pick(event, this.ctx.camera, this.ctx.dom, [this.targetGroup])
+      const hits = this.targetHits(event)
       hover(this.ctx.dom, hits.length > 0)
       return
     }
@@ -1211,7 +1232,7 @@ class ProjectileLab implements LabInstance {
 
   /* --------------------------------------------------------------- frame */
   update(dt: number): boolean {
-    if (this.state !== 'flying') return false
+    if (this.state !== 'flying' || dt <= 0) return false
     const duration = this.actual.time
     this.flightTime = Math.min(duration, this.flightTime + dt * this.playback)
     this.placeBall(this.flightTime)
@@ -1480,7 +1501,7 @@ class ProjectileLab implements LabInstance {
     if (typeof s.target === 'number') {
       this.target = Math.round(clamp(s.target, TARGET_MIN, TARGET_MAX) * 2) / 2
     }
-    if (typeof s.answer === 'number' && Number.isFinite(s.answer)) this.answer = s.answer
+    if (typeof s.answer === 'number' && Number.isFinite(s.answer)) this.answer = Math.max(0, s.answer)
     if (s.answerState === 'none' || s.answerState === 'ok' || s.answerState === 'bad') {
       this.answerState = s.answerState
     }
@@ -1521,6 +1542,7 @@ class ProjectileLab implements LabInstance {
   }
 
   dispose(): void {
+    this.ctx.dom.style.cursor = 'default'
     disposeObject(this.root)
   }
 }
