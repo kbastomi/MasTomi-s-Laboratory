@@ -438,8 +438,9 @@ details.info b { color: var(--ink); }
     padding-bottom: 26px;
   }
 
-  /* the scene gets the space above the bottom sheet, not the whole screen */
-  .panel-open .canvas-host { bottom: 46vh; }
+  /* the scene gets the space above the bottom sheet, not the whole screen.
+     The sheet sits 8px above the viewport edge, so the canvas stops there. */
+  .panel-open .canvas-host { bottom: calc(46vh + 8px); }
 
   .panel::before {
     content: "";

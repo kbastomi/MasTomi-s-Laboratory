@@ -108,6 +108,9 @@ class InclineLab implements LabInstance {
   private trace: { x: number; y: number }[] = []
   private simTime = 0
   private hudSig = ''
+  /** where the box was picked up along the ramp */
+  private drag = false
+  private dragOffset = 0
   /** where the box was when it was let go — the work is measured from here */
   private s0 = 0
 
@@ -365,26 +368,42 @@ class InclineLab implements LabInstance {
     if (event.button !== 0) return false
     const hits = pick(event, this.ctx.camera, this.ctx.dom, [this.block])
     if (!hits.length) return false
-    const p = rayPlaneZ(event, this.ctx.camera, this.ctx.dom, 0)
-    if (!p) return false
-    // place the box where it was grabbed
-    const along = (p.x * Math.cos(this.theta) + p.y * Math.sin(this.theta))
-    this.s = clamp(along, BLOCK / 2 + 0.05, RAMP_LEN - BLOCK / 2 - 0.05)
+    /* Grab the box: remember where along the ramp it was picked up, so the
+       box follows the pointer instead of jumping to it. */
+    this.drag = true
+    this.dragOffset = this.s - this.alongAt(event)
     this.v = 0
     this.held = true
-    this.applyGeometry()
+    this.ctx.dom.style.cursor = 'grabbing'
     this.ctx.invalidate()
     return true
   }
 
   onPointerMove(event: PointerEvent): void {
-    if (!this.held) return
-    const hits = pick(event, this.ctx.camera, this.ctx.dom, [this.block])
-    hover(this.ctx.dom, hits.length > 0)
+    if (!this.drag) {
+      const hits = pick(event, this.ctx.camera, this.ctx.dom, [this.block])
+      hover(this.ctx.dom, hits.length > 0)
+      return
+    }
+    const along = this.alongAt(event)
+    this.s = clamp(along + this.dragOffset, BLOCK / 2 + 0.05, RAMP_LEN - BLOCK / 2 - 0.05)
+    this.v = 0
+    this.applyGeometry()
+    this.ctx.invalidate()
   }
 
   onPointerUp(): void {
-    /* nothing to release */
+    if (this.drag) {
+      this.drag = false
+      this.ctx.dom.style.cursor = 'default'
+    }
+  }
+
+  /** How far along the ramp the pointer is, in metres. */
+  private alongAt(event: PointerEvent): number {
+    const p = rayPlaneZ(event, this.ctx.camera, this.ctx.dom, 0)
+    if (!p) return this.s
+    return p.x * Math.cos(this.theta) + p.y * Math.sin(this.theta)
   }
 
   /* --------------------------------------------------------------- frame */

@@ -390,6 +390,8 @@ export class App {
       engine: this.engine,
       lab: this.lab,
       route: this.route,
+      /** the whole catalogue — the QA harness walks every lab in it */
+      chapters: CHAPTERS,
     }
   }
 
