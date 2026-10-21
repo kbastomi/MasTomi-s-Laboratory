@@ -392,6 +392,8 @@ export class App {
       route: this.route,
       /** the whole catalogue — the QA harness walks every lab in it */
       chapters: CHAPTERS,
+      /** how many frames have been drawn — the harness waits on this */
+      get frames() { return this.engine.frames },
     }
   }
 

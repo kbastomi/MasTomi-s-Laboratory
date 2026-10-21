@@ -66,7 +66,7 @@ tools/
   qa/lib/harness.mjs         the shared QA helpers
   qa/suites/                 landing · rooms · mechanics · kinematics ·
                              measurements · mobile
-docs/                 architecture, how to add a lab, deployment guides
+docs/                 architecture, how to add a lab, the QA harness, deployment guides
 ```
 
 ---

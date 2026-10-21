@@ -5,8 +5,8 @@
 | **Session ID** | `ses_ea921c5cbffexIagoweCcKedZ5` |
 | **Directory** | `D:/lab` |
 | **Started** | 2026-10-20 08:12 |
-| **Last activity** | 2026-10-21 10:10 |
-| **Messages** | 631 |
+| **Last activity** | 2026-10-21 14:37 |
+| **Messages** | 714 |
 | **Model** | opencode/minimax-m3.1-flash-free |
 | **Exported** | 2026-10-21 |
 
@@ -5793,6 +5793,731 @@ Pushed. Let me update the docs for the new structure while the build runs.
 
 <details><summary>🔧 1 tool call</summary>
 
-- `shell` · `cd D:\lab\MasTomi-s-Laboratory; node tools/export-conversations.mjs 2>&1 | Select-Object -Last 2 | Out-String -Width 140; git add -A; git c…` — running
+- `shell` · `cd D:\lab\MasTomi-s-Laboratory; node tools/export-conversations.mjs 2>&1 | Select-Object -Last 2 | Out-String -Width 140; git add -A; git c…`
+
+</details>
+
+### 🤖 Assistant · build · 10:10
+
+All pushed. Waiting for the Cloudflare build, then verifying live.
+
+<details><summary>🔧 1 tool call</summary>
+
+- `shell` · `Start-Sleep -Seconds 70; Write-Output "waited"`
+
+</details>
+
+### 🤖 Assistant · build · 10:12
+
+<details><summary>🔧 1 tool call</summary>
+
+- `execute`
+
+</details>
+
+### 🤖 Assistant · build · 10:12
+
+<details><summary>🔧 1 tool call</summary>
+
+- `execute`
+
+</details>
+
+### 🤖 Assistant · build · 10:12
+
+The Cloudflare MCP dropped out of the catalog after the restart. Let me check its status and verify the deploy directly.
+
+<details><summary>🔧 1 tool call</summary>
+
+- `shell` · `cd D:\lab\MasTomi-s-Laboratory; opencode mcp list 2>&1 | Out-String -Width 160`
+
+</details>
+
+### 🤖 Assistant · build · 10:12
+
+<details><summary>🔧 2 tool calls</summary>
+
+- `shell` · `$cfg = "$env:USERPROFILE\.config\opencode"; Get-ChildItem $cfg -Force -ErrorAction SilentlyContinue | Select-Object Length,Name | Format-Ta…`
+- `shell` · `Write-Output "=== is the new build live? ==="; foreach ($u in @('https://mastomi.my.id/','https://mastomi.my.id/lab/','https://mastomi.my.i…`
+
+</details>
+
+### 🤖 Assistant · build · 10:13
+
+The site is live. Let me run the full suite against production and fix the MCP in parallel.
+
+<details><summary>🔧 1 tool call</summary>
+
+- `shell` · `cd D:\lab\MasTomi-s-Laboratory; $env:LAB_BASE="https://mastomi.my.id"; node tools\qa\run.mjs 2>&1 | Out-String -Width 200`
+
+</details>
+
+### 🤖 Assistant · build · 10:18
+
+**65/65 against production.** Let me restore the MCP connection and do a final state check.
+
+<details><summary>🔧 2 tool calls</summary>
+
+- `shell` · `opencode service restart 2>&1 | Out-String -Width 160; Start-Sleep -Seconds 3; Write-Output "--- mcp list ---"; opencode mcp list 2>&1 | Ou…` — error
+- `shell` · `cd D:\lab\MasTomi-s-Laboratory; Write-Output "=== git ==="; git status -sb; git log --oneline -6; Write-Output ""; Write-Output "local: $(g…` — error
+
+</details>
+
+### 🤖 Assistant · build · 10:18
+
+The service restart interrupted my own commands — let me re-check the state.
+
+<details><summary>🔧 2 tool calls</summary>
+
+- `shell` · `opencode mcp list 2>&1 | Out-String -Width 160`
+- `shell` · `cd D:\lab\MasTomi-s-Laboratory; Write-Output "=== git ==="; git status -sb; git log --oneline -6; Write-Output ""; Write-Output "local: $(g…`
+
+</details>
+
+### 🤖 Assistant · build · 10:19
+
+Git is clean and in sync. The MCP needs re-auth after the restart — let me do that.
+
+<details><summary>🔧 1 tool call</summary>
+
+- `shell` · `cd D:\lab\MasTomi-s-Laboratory; opencode mcp auth cloudflare 2>&1 | Tee-Object -FilePath "$env:TEMP\opencode\mcp-auth2.log"`
+
+</details>
+
+### 🤖 Assistant · build · 10:19
+
+<details><summary>🔧 1 tool call</summary>
+
+- `shell` · `Start-Sleep -Seconds 10; $log = "$env:TEMP\opencode\mcp-auth2.log"; $url = (Get-Content $log -Raw -ErrorAction SilentlyContinue) -split "`n…`
+
+</details>
+
+### 🤖 Assistant · build · 10:20
+
+<details><summary>🔧 1 tool call</summary>
+
+- `shell` · `$log = "$env:TEMP\opencode\mcp-auth2.log"; $raw = Get-Content $log -Raw -ErrorAction SilentlyContinue; Write-Output "--- raw tail ---"; ($r…`
+
+</details>
+
+### 🤖 Assistant · build · 10:20
+
+<details><summary>🔧 1 tool call</summary>
+
+- `shell` · `$log = "$env:TEMP\opencode\mcp-auth2.log"; $raw = Get-Content $log -Raw; $url = [regex]::Match($raw, 'https://mcp\.cloudflare\.com/authoriz…`
+
+</details>
+
+### 🤖 Assistant · build · 10:20
+
+<details><summary>🔧 1 tool call</summary>
+
+- `shell` · `Start-Sleep -Seconds 25; opencode mcp list 2>&1 | Out-String -Width 160; Write-Output "--- auth log ---"; $raw = Get-Content "$env:TEMP\ope…`
+
+</details>
+
+### 🤖 Assistant · build · 10:21
+
+Everything's pushed and live. Here's where things stand.
+
+## The refactor — three commits, all pushed
+
+| Commit | What moved |
+|---|---|
+| `5361e09` | **Catalogue split** — `catalog/chapters.ts` (516 lines, 11 chapters) → `catalog/chapters/<id>.ts` × 11, plus `catalog/index.ts` and `catalog/types.ts`. The catalogue types moved out of `core/lab.ts`, so the dependency direction is now explicit: catalogue → core, never back. |
+| `c1895d2` | **Instruments split** — `instruments.ts` (787 lines, 4 instruments) → `instruments/{vernier,micrometer,balance,stopwatch}.ts` + `scale.ts` + `types.ts`. A fifth instrument is now one new file. |
+| `3c3e468` | **QA harness split** — one 500-line script → `qa/run.mjs` + `qa/lib/harness.mjs` + `qa/suites/{landing,rooms,mechanics,kinematics,measurements,mobile}.js`. `npm run qa -- measurements` now checks one room in ~30 s instead of 133 s. |
+
+Two guards came out of the QA split:
+- **`rooms` suite sweeps every lab in the catalogue** and opens it — a typo in someone's `load()` import now fails the build instead of reaching one student on one page.
+- Checks **wait for results, not milliseconds**. Under software rendering the browser draws so few frames that a simulation runs slower than wall-clock, which was making half the physics checks flaky.
+
+## A real bug the split caught
+
+The **inclined plane's box could not be moved**. `onPointerDown` placed it where you clicked and `onPointerMove` only hovered — so it was stuck at the bottom of the ramp. It now takes a proper drag with a grab offset, so the box follows the pointer. The live check now confirms it: `the box can be dragged up the ramp [s=1.60 m]`.
+
+## The two new labs
+
+Both built by agents on free models, and both verified against closed-form answers:
+
+| Lab | Model | Verified |
+|---|---|---|
+| **Gerak Parabola** | `deepseek-v4.1-flash-free#max` | vx = vy = **14.14 m/s**, R = **40.8 m**, H = **10.19 m**, t = **2.88 s** |
+| **Jatuh Bebas** | `glm-5.3-flash-free#max` | t = **2.02 s**, v = **19.81 m/s** — and the student must *predict* before the stopwatch judges |
+
+On the models: `glm-5.3-flash` (no `-free` suffix) is a **paid** id and died with `Insufficient account funds`. The free one is `glm-5.3-flash-free` — I re-ran the free-fall lab on it, and it improved the first version (exact closed form instead of an integrated value, a `Plot` leak fix, a proper answer-verdict lifecycle).
+
+## Live and verified
+
+`65/65` QA checks pass **against `https://mastomi.my.id` itself**, not just locally — including the new Kinematics room, the fixed incline drag, and the catalogue sweep over all 8 labs.
+
+```
+e28ec42  Document the new catalogue and QA structure
+b09fd48  Add the Kinematics room: projectile motion and free fall
+3c3e468  Split the QA harness into suites, and fix the inclined plane's box
+c1895d2  Split the measuring instruments into one file each
+5361e09  Split the curriculum catalogue into one file per chapter
+```
+
+Local and remote are both at `e28ec42`, working tree clean.
+
+## One thing needs you
+
+The **Cloudflare MCP lost its OAuth token** when the service restarted. I reopened the authorize page — there's a browser tab waiting for you to click **Authorize**. Nothing is blocked (the deploy is done and verified), but the MCP won't reconnect until you approve it.
+
+### 🤖 Assistant · build · 10:26
+
+Authorization completed. Let me confirm the connection and close the loop on the deployment.
+
+<details><summary>🔧 1 tool call</summary>
+
+- `shell` · `opencode mcp list 2>&1 | Out-String -Width 160`
+
+</details>
+
+### 🤖 Assistant · build · 10:27
+
+MCP is back. Let me close the loop through the API.
+
+<details><summary>🔧 1 tool call</summary>
+
+- `execute`
+
+</details>
+
+### 🤖 Assistant · build · 10:27
+
+<details><summary>🔧 1 tool call</summary>
+
+- `execute`
+
+</details>
+
+### 🤖 Assistant · build · 10:27
+
+Everything is closed out and verified end to end.
+
+## Final state
+
+```
+Deployment   1021ed41  production / main
+             queued → initialize → clone_repo → build → deploy   all success
+Canonical    https://1021ed41.mastomi-laboratory.pages.dev
+Aliases      https://mastomi.my.id
+             https://lab.mastomi.my.id
+Domains      mastomi.my.id        status=active  verification=active
+             lab.mastomi.my.id    status=active  verification=active
+Build        npm run build → dist
+Source       github kbastomi/MasTomi-s-Laboratory
+```
+
+**65/65 QA checks pass against `https://mastomi.my.id` itself** — landing page, chapter index, the catalogue sweep over all 8 labs, the physics of every room, and the phone layout.
+
+## What shipped since the last deploy
+
+| Commit | |
+|---|---|
+| `5361e09` | Catalogue split — 11 chapter files + `index.ts` + `types.ts`; catalogue types moved out of `core/lab.ts` |
+| `c1895d2` | Instruments split — 4 files + `scale.ts` + `types.ts` |
+| `3c3e468` | QA harness split — runner + `lib/` + 6 suites; **and a real bug fixed**: the inclined plane's box couldn't be moved (`onPointerMove` only hovered) |
+| `b09fd48` | Kinematics room — projectile motion (deepseek-free) and free fall (glm-free) |
+| `e28ec42` | Docs for the new structure |
+
+## Two things worth remembering
+
+**The model ids matter.** `glm-5.3-flash` is paid and fails with `Insufficient account funds`; the free one is `glm-5.3-flash-free`. Both agents ran on free models — and GLM's free-fall version came out better than the first attempt (exact closed form, a `Plot` leak fix, a proper answer-verdict lifecycle).
+
+**The QA split earned its keep immediately.** Two of the three "bugs" it surfaced were in my own test code, and one was a genuine lab defect — the inclined plane's box was stuck at the bottom of the ramp, which a student would have hit immediately.
+
+## Still open
+
+Next sensible step is filling **Dynamics** (Hukum Newton, Gaya Gesek, Tumbukan) — the room is scaffolded and the Lab contract is now a comfortable one file per lab.
+
+### 👤 Student · 10:34
+
+the processing power of this machine is limited, can the qa process offloaded to other machine? if can, what the process needed
+
+### 🤖 Assistant · plan · 10:34
+
+Good question — and the answer has a wrinkle worth measuring first. Let me gather facts.
+
+<details><summary>🔧 2 tool calls</summary>
+
+- `shell` · `cd D:\lab\MasTomi-s-Laboratory; $suites = @('landing','rooms','mechanics','kinematics','measurements','mobile'); foreach ($s in $suites) { …`
+- `shell` · `Write-Output "=== CPU ==="; Get-CimInstance Win32_Processor | Select-Object Name,NumberOfCores,NumberOfLogicalProcessors,MaxClockSpeed | Fo…`
+
+</details>
+
+### 🤖 Assistant · plan · 10:35
+
+A 2013 i5 laptop (2 cores, no GPU) — that explains the software rendering and the flaky timing. Let me check whether the CI workflow has been running.
+
+<details><summary>🔧 1 tool call</summary>
+
+- `shell` · `try { $r = Invoke-WebRequest "https://api.github.com/repos/kbastomi/MasTomi-s-Laboratory/actions/runs?per_page=5" -UseBasicParsing -Headers…`
+
+</details>
+
+### 🤖 Assistant · plan · 10:35
+
+**The CI is already running as "another machine"** — 12 runs — but the latest one **failed**. Let me find out why.
+
+<details><summary>🔧 1 tool call</summary>
+
+- `shell` · `$h = @{ 'User-Agent'='lab'; 'Accept'='application/vnd.github+json' }; $runs = (Invoke-WebRequest "https://api.github.com/repos/kbastomi/Mas…`
+
+</details>
+
+### 🤖 Assistant · plan · 10:35
+
+<details><summary>🔧 1 tool call</summary>
+
+- `shell` · `$h = @{ 'User-Agent'='lab'; 'Accept'='application/vnd.github+json' }; $jobs = (Invoke-WebRequest "https://api.github.com/repos/kbastomi/Mas…`
+
+</details>
+
+### 🤖 Assistant · plan · 10:36
+
+Logs need admin rights, but the screenshots artifact was uploaded. Let me try that.
+
+<details><summary>🔧 1 tool call</summary>
+
+- `shell` · `$h = @{ 'User-Agent'='lab'; 'Accept'='application/vnd.github+json' }; try { $a = (Invoke-WebRequest "https://api.github.com/repos/kbastomi/…`
+
+</details>
+
+### 🤖 Assistant · plan · 10:37
+
+<details><summary>🔧 1 tool call</summary>
+
+- `shell` · `$h = @{ 'User-Agent'='lab'; 'Accept'='application/vnd.github+json' }; $out = "$env:TEMP\opencode\qa-artifact.zip"; try { Invoke-WebRequest …`
+
+</details>
+
+### 🤖 Assistant · plan · 10:40
+
+Let me get the per-suite timing that was running.
+
+<details><summary>🔧 1 tool call</summary>
+
+- `shell` · `Get-Content "C:\Users\PC Rumah\.local\share\opencode\shell\740a21605574232733c4a347d6f3f0a484b4dd5b\sh_15c86ef02001MidhVCG4oe29jv.out" -Raw…`
+
+</details>
+
+### 🤖 Assistant · plan · 10:41
+
+Good — I have what I need. Here's the answer and the plan.
+
+## Yes, it can be offloaded — and it's already half done
+
+The QA is self-contained: it boots its own `vite preview` server, drives headless Chrome, and writes screenshots. No shared state with this machine. A second box runs it verbatim:
+
+```bash
+git clone https://github.com/kbastomi/MasTomi-s-Laboratory.git
+cd MasTomi-s-Laboratory
+npm ci && npm run build && npm run qa
+```
+
+**But first — the more important finding.**
+
+### GitHub Actions is *already* your other machine
+
+The `ci.yml` workflow has run **12 times** on your repo. It passed on `b09fd48` and **failed on `e28ec42`** — which was a *docs-only* commit, so the code was byte-identical. **That failure was a flake, not a regression.**
+
+And it isn't this machine's fault. GitHub's runners have no GPU either, so Chrome falls back to SwiftShader there too.
+
+### The real culprit is in our own harness
+
+```js
+'--use-gl=angle',
+'--use-angle=swiftshader',   // ← forces software rendering everywhere
+```
+
+We **force** software rendering — so even a box with a good GPU is throttled. That's why the simulation runs at a fraction of wall-clock and why the timing checks flake.
+
+### Where the time actually goes (measured just now)
+
+| Suite | Time | Checks |
+|---|---|---|
+| landing | 24 s | 11 |
+| rooms | 39 s | 14 |
+| **mechanics** | **128 s** | 20 |
+| kinematics | 34 s | 12 |
+| measurements | 64 s | 13 |
+| mobile | 12 s | 5 |
+
+**Mechanics is 40 % of the run** — it's the suite that waits for the box to slide down a ramp in slow motion.
+
+---
+
+## The plan (in value order)
+
+### 1. Stop forcing software rendering — *small, biggest win*
+Let Chrome pick the GPU, and only fall back to SwiftShader if it can't:
+```
+--use-gl=angle --use-angle=default   (or omit entirely)
+```
+On a GPU box: frames get ~10× faster, the simulation runs at real-time speed, the timing checks become **reliable**, and the suite drops to maybe 20 s. Add `QA_GL=swiftshader` for this machine.
+
+### 2. Replace the fixed sleeps with readiness signals — *medium*
+Every lab open does `sleep(2600)`. Instead: wait until the panel has sections **and** the canvas has painted its first frame. This is the single biggest fixed cost and it's pure waste on a fast machine.
+
+### 3. Run the suites in parallel — *medium*
+The suites are already independent. Give each its own page and run them concurrently: 6 suites on 4 threads ≈ 3× faster.
+
+### 4. Then offload — your options
+
+| Option | Setup | Notes |
+|---|---|---|
+| **A. GitHub Actions** | **none** — already running | Fix the flake first (steps 1–3), then it's a trustworthy gate. Screenshots land as an artifact. |
+| **B. Self-hosted runner on a better box** | register it as a runner | Same commands, your hardware, a GPU if it has one. No repo change. |
+| **C. Shard across machines** | none | `npm run qa -- mechanics` on box A, `-- measurements,rooms` on box B. Wall-clock becomes the slowest suite, not the sum. Needs a `--shard` flag. |
+| **D. A plain QA box** | clone → `npm ci` → `qa` | Simplest; you run it when you want. |
+
+### What the other machine needs
+
+| | |
+|---|---|
+| Node | **22.12+** (Vite 8's engine; `node:sqlite` needs 22.5+) |
+| Browser | Chrome or Chromium — `puppeteer-core` uses the **system** browser and does *not* download one. Set `CHROME_PATH` if it's in an unusual place |
+| Disk | ~1.5 GB (`node_modules` ≈ 500 MB, `dist`, screenshots) |
+| CPU | 4+ cores; a GPU is a big win but not required |
+| Network | npm registry |
+
+---
+
+## Decisions I need from you
+
+1. **Which machine?** A spare box you already have, or should GitHub Actions be the gate? (If you have a box with a GPU, option B is the best of both.)
+2. **Does it have a GPU?** That decides whether the timing-sensitive checks can be trusted there, or whether I should make them signal-based regardless.
+3. **What should it test** — a local build, or the deployed site via `LAB_BASE=https://mastomi.my.id`?
+
+My recommendation, if you have nothing spare: **do steps 1–3 on this machine, then let GitHub Actions be the gate.** The hardcoded SwiftShader flag alone is probably why CI went red on a docs commit — and fixing it makes both this machine and the runners faster and steadier.
+
+Say the word and I'll switch to build mode and implement it.
+
+### 👤 Student · 10:56
+
+1. yes. dont force on cpu. what i mean on initial plant without gpu is no discreet gpu, its still have igpu. 2 is okay, seem make the animation smoother. 3. no, run suites max concurrent 2, open the cpu for other task. 4. dont offload yet, we test after the flake is sorted.
+
+### 🤖 Assistant · build · 10:56
+
+Clear. Implementing: no forced software rendering, readiness waits instead of fixed sleeps, and suites running 2-at-a-time.
+
+<details><summary>🔧 2 tool calls</summary>
+
+- `edit` · `D:\lab\MasTomi-s-Laboratory\lab\src\core\engine.ts`
+- `edit` · `D:\lab\MasTomi-s-Laboratory\lab\src\core\engine.ts`
+
+</details>
+
+### 🤖 Assistant · build · 10:59
+
+<details><summary>🔧 1 tool call</summary>
+
+- `edit` · `D:\lab\MasTomi-s-Laboratory\lab\src\app.ts`
+
+</details>
+
+### 🤖 Assistant · build · 10:59
+
+Now the harness — GPU-aware launch and readiness waits.
+
+<details><summary>🔧 1 tool call</summary>
+
+- `edit` · `D:\lab\MasTomi-s-Laboratory\tools\qa\lib\harness.mjs`
+
+</details>
+
+### 🤖 Assistant · build · 11:00
+
+<details><summary>🔧 1 tool call</summary>
+
+- `edit` · `D:\lab\MasTomi-s-Laboratory\tools\qa\lib\harness.mjs`
+
+</details>
+
+### 🤖 Assistant · build · 11:01
+
+Now the runner — 2 concurrent suites, and report which renderer we got.
+
+<details><summary>🔧 1 tool call</summary>
+
+- `edit` · `D:\lab\MasTomi-s-Laboratory\tools\qa\lib\harness.mjs`
+
+</details>
+
+### 🤖 Assistant · build · 11:02
+
+<details><summary>🔧 1 tool call</summary>
+
+- `edit` · `D:\lab\MasTomi-s-Laboratory\tools\qa\run.mjs`
+
+</details>
+
+### 🤖 Assistant · build · 11:03
+
+<details><summary>🔧 1 tool call</summary>
+
+- `edit` · `D:\lab\MasTomi-s-Laboratory\tools\qa\run.mjs`
+
+</details>
+
+### 🤖 Assistant · build · 11:03
+
+<details><summary>🔧 1 tool call</summary>
+
+- `shell` · `cd D:\lab\MasTomi-s-Laboratory; npx tsc --noEmit 2>&1 | Out-String -Width 160; npm run build 2>&1 | Select-Object -Last 2 | Out-String -Wid…`
+
+</details>
+
+### 🤖 Assistant · build · 11:08
+
+Two findings: the renderer is **still SwiftShader** (the iGPU isn't being picked up), and 2 concurrent WebGL pages overran the protocol timeout. Let me test which flags actually get hardware acceleration.
+
+<details><summary>🔧 1 tool call</summary>
+
+- `write` · `D:\lab\MasTomi-s-Laboratory\tools\qa\_gpu-probe.mjs`
+
+</details>
+
+### 🤖 Assistant · build · 11:09
+
+<details><summary>🔧 1 tool call</summary>
+
+- `shell` · `cd D:\lab\MasTomi-s-Laboratory; node tools\qa\_gpu-probe.mjs 2>&1 | Out-String -Width 200`
+
+</details>
+
+### 🤖 Assistant · build · 11:10
+
+Real hardware found: `--use-angle=d3d11` uses the **Intel HD Graphics 3000** (the NVIDIA GT 540M reports `Status=Error` — dead driver). But the iGPU reports feature level 4_1, which may mean no WebGL 2 — and three.js r186 needs WebGL 2. Let me check.
+
+<details><summary>🔧 1 tool call</summary>
+
+- `shell` · `cd D:\lab\MasTomi-s-Laboratory; python -c "import io;p=r'tools\qa\_gpu-probe.mjs';s=io.open(p,encoding='utf-8').read();s=s.replace(\"\"\" c…`
+
+</details>
+
+### 🤖 Assistant · build · 11:12
+
+<details><summary>🔧 1 tool call</summary>
+
+- `write` · `D:\lab\MasTomi-s-Laboratory\tools\qa\_gpu-probe.mjs`
+
+</details>
+
+### 🤖 Assistant · build · 11:13
+
+<details><summary>🔧 1 tool call</summary>
+
+- `shell` · `cd D:\lab\MasTomi-s-Laboratory; node tools\qa\_gpu-probe.mjs 2>&1 | Out-String -Width 200`
+
+</details>
+
+### 🤖 Assistant · build · 11:22
+
+Definitive: the **Intel iGPU can't do WebGL 2** (feature level 4_1) and three.js r186 requires it — so software rendering is the *only* path that runs the lab here. The NVIDIA card's driver is dead (`Status=Error`). Let me make the harness handle all of this properly.
+
+<details><summary>🔧 1 tool call</summary>
+
+- `edit` · `D:\lab\MasTomi-s-Laboratory\tools\qa\lib\harness.mjs`
+
+</details>
+
+### 🤖 Assistant · build · 13:26
+
+Continuing — the harness now handles the GPU paths. Let me update the runner's report and measure the concurrency.
+
+<details><summary>🔧 1 tool call</summary>
+
+- `edit` · `D:\lab\MasTomi-s-Laboratory\tools\qa\run.mjs`
+
+</details>
+
+### 🤖 Assistant · build · 13:27
+
+<details><summary>🔧 1 tool call</summary>
+
+- `shell` · `cd D:\lab\MasTomi-s-Laboratory; Remove-Item tools\qa\_gpu-probe.mjs -Force -ErrorAction SilentlyContinue; npx tsc --noEmit 2>&1 | Out-Strin…`
+
+</details>
+
+### 🤖 Assistant · build · 13:28
+
+The readiness wait was wrong for the index page (no lab open → no panel sections). Let me fix it.
+
+<details><summary>🔧 1 tool call</summary>
+
+- `edit` · `D:\lab\MasTomi-s-Laboratory\tools\qa\lib\harness.mjs`
+
+</details>
+
+### 🤖 Assistant · build · 13:28
+
+<details><summary>🔧 1 tool call</summary>
+
+- `shell` · `cd D:\lab\MasTomi-s-Laboratory; Write-Output "=== concurrency 1 ==="; $sw=[Diagnostics.Stopwatch]::StartNew(); $env:QA_CONCURRENCY="1"; nod…`
+
+</details>
+
+### 🤖 Assistant · build · 13:31
+
+Concurrency 1: **122.8 s**, 65/65. Now concurrency 2.
+
+<details><summary>🔧 1 tool call</summary>
+
+- `shell` · `cd D:\lab\MasTomi-s-Laboratory; Write-Output "=== concurrency 2 ==="; $sw=[Diagnostics.Stopwatch]::StartNew(); $env:QA_CONCURRENCY="2"; nod…`
+
+</details>
+
+### 🤖 Assistant · build · 13:37
+
+Concurrency 2 took **380 s** and produced no result — on 2 cores with software rendering, two WebGL pages starve each other. Let me make the concurrency adapt to the renderer.
+
+<details><summary>🔧 1 tool call</summary>
+
+- `edit` · `D:\lab\MasTomi-s-Laboratory\tools\qa\run.mjs`
+
+</details>
+
+### 🤖 Assistant · build · 13:38
+
+<details><summary>🔧 1 tool call</summary>
+
+- `shell` · `cd D:\lab\MasTomi-s-Laboratory; Write-Output "=== two suites, concurrency 2 (to see the failure) ==="; $env:QA_CONCURRENCY="2"; node tools\…`
+
+</details>
+
+### 🤖 Assistant · build · 13:43
+
+Two distinct flakiness causes exposed. Let me fix both properly.
+
+<details><summary>🔧 1 tool call</summary>
+
+- `edit` · `D:\lab\MasTomi-s-Laboratory\tools\qa\lib\harness.mjs`
+
+</details>
+
+### 🤖 Assistant · build · 13:47
+
+<details><summary>🔧 1 tool call</summary>
+
+- `edit` · `D:\lab\MasTomi-s-Laboratory\tools\qa\suites\measurements.mjs`
+
+</details>
+
+### 🤖 Assistant · build · 13:48
+
+<details><summary>🔧 1 tool call</summary>
+
+- `edit` · `D:\lab\MasTomi-s-Laboratory\tools\qa\suites\measurements.mjs`
+
+</details>
+
+### 🤖 Assistant · build · 14:12
+
+Let me verify the fixes at the concurrency that was failing.
+
+<details><summary>🔧 1 tool call</summary>
+
+- `shell` · `cd D:\lab\MasTomi-s-Laboratory; npx tsc --noEmit 2>&1 | Out-String -Width 160; npm run build 2>&1 | Select-Object -Last 2 | Out-String -Wid…`
+
+</details>
+
+### 🤖 Assistant · build · 14:18
+
+Still failing at concurrency 2. Let me capture the actual error.
+
+<details><summary>🔧 1 tool call</summary>
+
+- `shell` · `cd D:\lab\MasTomi-s-Laboratory; $env:QA_CONCURRENCY="2"; node tools\qa\run.mjs 2>&1 | Select-Object -Last 30 | Out-String -Width 200`
+
+</details>
+
+### 🤖 Assistant · build · 14:26
+
+The checks now pass at concurrency 2, but a starved page can still hang the whole run. Let me isolate suite failures.
+
+<details><summary>🔧 1 tool call</summary>
+
+- `edit` · `D:\lab\MasTomi-s-Laboratory\tools\qa\run.mjs`
+
+</details>
+
+### 🤖 Assistant · build · 14:27
+
+<details><summary>🔧 1 tool call</summary>
+
+- `shell` · `cd D:\lab\MasTomi-s-Laboratory; npm run build 2>&1 | Select-Object -Last 2 | Out-String -Width 160; Write-Output "=== auto concurrency (sho…`
+
+</details>
+
+### 🤖 Assistant · build · 14:29
+
+Auto-detection works: 1 at a time for software rendering, **65/65 in 125 s**. Let me verify stability while I update the docs and CI.
+
+<details><summary>🔧 2 tool calls</summary>
+
+- `shell` · `cd D:\lab\MasTomi-s-Laboratory; for ($i=1; $i -le 3; $i++) { $sw=[Diagnostics.Stopwatch]::StartNew(); $out = node tools\qa\run.mjs 2>&1 | S…`
+- `write` · `D:\lab\MasTomi-s-Laboratory\docs\QA.md`
+
+</details>
+
+### 🤖 Assistant · build · 14:30
+
+<details><summary>🔧 1 tool call</summary>
+
+- `edit` · `D:\lab\MasTomi-s-Laboratory\.github\workflows\ci.yml`
+
+</details>
+
+### 🤖 Assistant · build · 14:30
+
+<details><summary>🔧 1 tool call</summary>
+
+- `edit` · `D:\lab\MasTomi-s-Laboratory\README.md`
+
+</details>
+
+### 🤖 Assistant · build · 14:30
+
+<details><summary>🔧 1 tool call</summary>
+
+- `edit` · `D:\lab\MasTomi-s-Laboratory\README.md`
+
+</details>
+
+### 🤖 Assistant · build · 14:31
+
+<details><summary>🔧 1 tool call</summary>
+
+- `shell` · `Get-Content "C:\Users\PC Rumah\.local\share\opencode\shell\740a21605574232733c4a347d6f3f0a484b4dd5b\sh_15d5e18f90017fBZCBtPTmVFJr.out" -Raw…`
+
+</details>
+
+### 🤖 Assistant · build · 14:31
+
+<details><summary>🔧 1 tool call</summary>
+
+- `edit` · `D:\lab\MasTomi-s-Laboratory\docs\ARCHITECTURE.md`
+
+</details>
+
+### 🤖 Assistant · build · 14:33
+
+<details><summary>🔧 1 tool call</summary>
+
+- `shell` · `Start-Sleep -Seconds 200; Get-Content "C:\Users\PC Rumah\.local\share\opencode\shell\740a21605574232733c4a347d6f3f0a484b4dd5b\sh_15d5e18f90…`
+
+</details>
+
+### 🤖 Assistant · build · 14:37
+
+Three consecutive clean runs — **65/65 every time, ~125 s**. The flake is sorted. Let me commit and push.
+
+<details><summary>🔧 1 tool call</summary>
+
+- `shell` · `cd D:\lab\MasTomi-s-Laboratory; node tools/export-conversations.mjs 2>&1 | Select-Object -Last 2 | Out-String -Width 140; git add -A; git s…` — running
 
 </details>

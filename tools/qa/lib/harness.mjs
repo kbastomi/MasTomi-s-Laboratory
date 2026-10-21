@@ -38,30 +38,91 @@ export const PHONE = { width: 390, height: 844, deviceScaleFactor: 2, isMobile: 
 /** Collects the results and prints them as they happen. */
 export function createReporter() {
   const results = []
+  let suite = ''
   return {
     results,
+    /** tag the lines with the suite they came from */
+    setSuite(name) { suite = name },
     check(name, ok, extra) {
       const pass = !!ok
       results.push({ name, ok: pass })
-      console.log(`${pass ? 'PASS' : 'FAIL'}  ${name}${extra !== undefined ? `   [${extra}]` : ''}`)
+      const tag = suite ? `[${suite}] ` : ''
+      console.log(`${pass ? 'PASS' : 'FAIL'}  ${tag}${name}${extra !== undefined ? `   [${extra}]` : ''}`)
     },
   }
 }
 
+/**
+ * How the browser should render.
+ *
+ * On a machine with a working GPU, Chrome picks the hardware path by itself
+ * and everything is fast. On this one it cannot: the Intel HD Graphics 3000
+ * is feature level 4_1, so it offers no WebGL 2 (which three.js r186 needs),
+ * and the NVIDIA GT 540M's driver is dead. Software rendering is therefore
+ * the only path that can run the laboratory here — and it is slow, so a
+ * simulation advances at a fraction of the wall clock.
+ *
+ * QA_GL=swiftshader  force the software path
+ * QA_GL=d3d11        force the Windows D3D11 path (no WebGL 2 on old chips)
+ * QA_GL=default      let Chrome choose (the default)
+ */
+function glArgs() {
+  const mode = process.env.QA_GL ?? 'default'
+  if (mode === 'swiftshader') return ['--use-gl=angle', '--use-angle=swiftshader']
+  if (mode === 'd3d11') return ['--use-angle=d3d11']
+  return []
+}
+
 export async function launchBrowser() {
+  const args = [
+    '--no-sandbox',
+    '--disable-dev-shm-usage',
+    /* Software rendering stays *available* as a fallback, but it is not
+       forced: Chrome should use the machine's GPU when it has one. */
+    '--enable-unsafe-swiftshader',
+    '--ignore-gpu-blocklist',
+    '--disable-background-timer-throttling',
+    '--disable-renderer-backgrounding',
+    '--hide-scrollbars',
+    ...glArgs(),
+  ]
+
+  const headless = process.env.QA_HEADLESS === '0' ? false : 'new'
   return puppeteer.launch({
     executablePath: process.env.CHROME_PATH || findChrome(),
-    headless: 'new',
-    args: [
-      '--no-sandbox',
-      '--disable-dev-shm-usage',
-      '--enable-unsafe-swiftshader',
-      '--use-gl=angle',
-      '--use-angle=swiftshader',
-      '--disable-background-timer-throttling',
-      '--disable-renderer-backgrounding',
-      '--hide-scrollbars',
-    ],
+    headless,
+    args,
+    /* a software-rendered page can take a long time to answer */
+    protocolTimeout: Number(process.env.QA_PROTOCOL_TIMEOUT ?? 300000),
+  })
+}
+
+/**
+ * Which WebGL renderer the page actually got.
+ *
+ * "SwiftShader" means the software path — a simulation then runs slower than
+ * the wall clock, which is what makes timing-sensitive checks flaky. A real
+ * GPU shows up here as the chip's name.
+ */
+export async function describeRenderer(page) {
+  return page.evaluate(() => {
+    try {
+      const canvas = document.createElement('canvas')
+      const gl2 = canvas.getContext('webgl2')
+      const gl = gl2 || canvas.getContext('webgl')
+      if (!gl) return { renderer: 'none', software: true, webgl2: false }
+      const dbg = gl.getExtension('WEBGL_debug_renderer_info')
+      const name = dbg ? String(gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL)) : 'unknown'
+      const lose = gl.getExtension('WEBGL_lose_context')
+      if (lose) lose.loseContext()
+      return {
+        renderer: name,
+        software: /swiftshader|llvmpipe|software|basic render/i.test(name),
+        webgl2: !!gl2,
+      }
+    } catch {
+      return { renderer: 'unknown', software: false, webgl2: false }
+    }
   })
 }
 
@@ -78,16 +139,104 @@ export async function openPage(browser, viewport = DESKTOP) {
 
 /* ------------------------------------------------------------------ helpers */
 
+/**
+ * Wait until the laboratory has actually drawn something.
+ *
+ * The old code slept for a fixed 2.6 seconds after every navigation, which
+ * was both slow and unreliable. This waits for the real thing: the page's
+ * content is in place and the engine has put a frame on the canvas.
+ */
+export async function waitForLabReady(page, timeout = 25000) {
+  await page.waitForFunction(
+    () => {
+      const app = window.APP
+      if (!app || !app.debug) return false
+      if (!app.debug.frames) return false
+
+      const overlay = document.querySelector('#overlay')
+      const onIndex = overlay && !overlay.classList.contains('hidden')
+      if (onIndex) {
+        /* the chapter index: the cards are the signal */
+        return document.querySelectorAll('.chapter-card').length > 0
+      }
+
+      /* a simulation is open: its panel is the signal */
+      const panel = document.querySelector('#panel')
+      if (!panel || !panel.querySelector('.panel-section')) return false
+      /* and its readouts must have a value — a section can exist before the
+         first measurement is in, and a check that samples too early sees
+         empty rows */
+      const values = [...panel.querySelectorAll('.readout .v')].map((n) => n.textContent.trim())
+      if (values.length === 0) return true
+      return values.some((v) => v !== '' && v !== '—')
+    },
+    { timeout, polling: 'raf' },
+  )
+  await sleep(120)
+}
+
+/**
+ * The screen position of the *middle* of a named group.
+ *
+ * A group's own origin can sit well outside the frame while the object it
+ * holds is perfectly visible, so a "is it on screen?" check has to look at
+ * the geometry, not at the pivot.
+ */
+export async function groupCentre(page, objectName) {
+  return page.evaluate((name) => {
+    const app = window.APP
+    const lab = app.debug.lab
+    const group = lab.root.getObjectByName(name)
+    if (!group) return null
+
+    let minX = Infinity, minY = Infinity, minZ = Infinity
+    let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity
+    const v = group.position.clone()
+
+    group.traverse((o) => {
+      if (!o.geometry) return
+      o.geometry.computeBoundingBox()
+      const bb = o.geometry.boundingBox
+      if (!bb) return
+      for (const sx of [bb.min.x, bb.max.x]) {
+        for (const sy of [bb.min.y, bb.max.y]) {
+          for (const sz of [bb.min.z, bb.max.z]) {
+            v.set(sx, sy, sz)
+            o.localToWorld(v)
+            if (v.x < minX) minX = v.x
+            if (v.y < minY) minY = v.y
+            if (v.z < minZ) minZ = v.z
+            if (v.x > maxX) maxX = v.x
+            if (v.y > maxY) maxY = v.y
+            if (v.z > maxZ) maxZ = v.z
+          }
+        }
+      }
+    })
+    if (!Number.isFinite(minX)) return null
+
+    v.set((minX + maxX) / 2, (minY + maxY) / 2, (minZ + maxZ) / 2)
+    v.project(app.debug.engine.camera)
+    const r = app.debug.engine.dom.getBoundingClientRect()
+    return {
+      x: r.left + ((v.x + 1) / 2) * r.width,
+      y: r.top + ((1 - v.y) / 2) * r.height,
+      ndcX: v.x,
+      ndcY: v.y,
+    }
+  }, objectName)
+}
+
 /** Open the laboratory's home page. */
 export async function gotoIndex(page, base) {
   await page.goto(`${base}/lab/`, { waitUntil: 'networkidle2', timeout: 60000 })
-  await sleep(2500)
+  await waitForLabReady(page)
 }
 
 /** Open one simulation and wait for it to settle. */
 export async function gotoLab(page, base, chapter, lab) {
   await page.goto(`${base}/lab/#/lab/${chapter}/${lab}`, { waitUntil: 'networkidle2', timeout: 60000 })
-  await sleep(2600)
+  await waitForLabReady(page)
 }
 
 /** The structure of the open lab's panel. */

@@ -21,7 +21,7 @@ import { existsSync, mkdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { preview } from 'vite'
-import { createReporter, DESKTOP, launchBrowser, openPage, sleep } from './lib/harness.mjs'
+import { createReporter, describeRenderer, DESKTOP, launchBrowser, openPage, sleep } from './lib/harness.mjs'
 
 const ROOT = dirname(dirname(dirname(fileURLToPath(import.meta.url))))
 const SHOTS = join(ROOT, 'tools', 'qa', 'shots')
@@ -90,33 +90,76 @@ async function main() {
   await waitForServer(`${BASE}/index.html`)
 
   const browser = await launchBrowser()
-  const { page, consoleErrors, pageErrors } = await openPage(browser, DESKTOP)
   const reporter = createReporter()
+  const suites = selectedSuites()
+
+  const workers = []
+  workers.push(await openPage(browser, DESKTOP))
+
+  const renderer = await describeRenderer(workers[0].page)
+  console.log(`WebGL: ${renderer.webgl2 ? 'WebGL 2' : 'WebGL 1 only'}  ${renderer.renderer.slice(0, 90)}`)
+
+  /**
+   * How many suites run at once.
+   *
+   * With hardware rendering two suites are cheap and halve the wall clock.
+   * With software rendering they are not: two WebGL pages on a small machine
+   * starve each other and the run gets *slower*, not faster — so the default
+   * follows the renderer. QA_CONCURRENCY overrides it either way.
+   */
+  const defaultConcurrency = renderer.software ? 1 : 2
+  const CONCURRENCY = Math.max(
+    1,
+    Math.min(Number(process.env.QA_CONCURRENCY ?? defaultConcurrency), suites.length),
+  )
+  for (let i = 1; i < CONCURRENCY; i++) {
+    workers.push(await openPage(browser, DESKTOP))
+  }
 
   const ctx = {
-    page,
     base: BASE,
     shots: SHOTS,
     check: reporter.check,
     sleep,
-    consoleErrors,
-    pageErrors,
   }
 
-  const suites = selectedSuites()
-  console.log(`running ${suites.length} suite(s) against ${BASE}\n`)
+  console.log(`running ${suites.length} suite(s) against ${BASE}, ${CONCURRENCY} at a time\n`)
 
-  try {
-    for (const suite of suites) {
+  if (renderer.software) {
+    console.log('  software rendering — a simulation advances slower than the wall clock, so')
+    console.log('  the checks wait for results rather than for time.  QA_GL=swiftshader forces it.\n')
+  } else {
+    console.log('  hardware accelerated\n')
+  }
+
+  let next = 0
+  async function worker(w) {
+    for (;;) {
+      const index = next++
+      if (index >= suites.length) return
+      const suite = suites[index]
+      reporter.setSuite(suite.name)
       console.log(`— ${suite.name} —`)
-      const mod = await suite.load()
-      await page.setViewport(DESKTOP)
-      await mod.run(ctx)
+      try {
+        const mod = await suite.load()
+        await w.page.setViewport(DESKTOP)
+        await mod.run({ ...ctx, page: w.page, consoleErrors: w.consoleErrors, pageErrors: w.pageErrors })
+      } catch (err) {
+        /* one suite falling over must not take the whole run with it */
+        reporter.check(`${suite.name}: suite ran to the end`, false, String(err).slice(0, 140))
+      }
       console.log('')
     }
+  }
+
+  try {
+    await Promise.all(workers.map(worker))
 
     /* nothing may have logged an error along the way */
+    const consoleErrors = workers.flatMap((w) => w.consoleErrors)
+    const pageErrors = workers.flatMap((w) => w.pageErrors)
     const realErrors = consoleErrors.filter((e) => !/favicon|404 \(Not Found\)/i.test(e))
+    reporter.setSuite('')
     reporter.check('no uncaught page errors across the run', pageErrors.length === 0, pageErrors.join(' | '))
     reporter.check('no console errors across the run', realErrors.length === 0, realErrors.slice(0, 3).join(' | '))
   } finally {

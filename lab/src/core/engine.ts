@@ -60,6 +60,9 @@ export class Engine {
   private visible = true
   private disposed = false
 
+  /** how many frames have actually been drawn — the QA harness waits on this */
+  frames = 0
+
   qualityMode: QualityMode = 'auto'
   qualityLevel: QualityName = 'high'
   software = false
@@ -356,6 +359,7 @@ export class Engine {
     const t0 = performance.now()
     this.updateLabelScales()
     this.renderer.render(this.scene, this.camera)
+    this.frames++
     const renderMs = performance.now() - t0
 
     this.auto.sample(frameMs)

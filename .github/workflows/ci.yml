@@ -30,7 +30,14 @@ jobs:
           chrome-version: stable
 
       - name: Browser QA
+        # The runners have no GPU, so Chrome falls back to software rendering
+        # and a simulation advances slower than the wall clock. The checks
+        # wait for results rather than for time, and one suite at a time keeps
+        # the runner responsive.
         run: npm run qa
+        env:
+          QA_CONCURRENCY: '1'
+          QA_PROTOCOL_TIMEOUT: '600000'
 
       - name: Upload QA screenshots
         if: always()

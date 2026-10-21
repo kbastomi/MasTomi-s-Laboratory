@@ -1,7 +1,7 @@
 /**
  * The measurements room: reading instruments, density, and vectors.
  */
-import { gotoLab, numbers, readPanel, readReadoutRows, readReadouts, shot, sleep } from '../lib/harness.mjs'
+import { gotoLab, groupCentre, numbers, readPanel, readReadoutRows, readReadouts, shot, sleep } from '../lib/harness.mjs'
 
 export async function run(ctx) {
   const { page, base, shots, check } = ctx
@@ -49,28 +49,17 @@ export async function run(ctx) {
 
   /* --- every instrument must be reachable and framed --- */
   const instrumentNames = ['Vernier', 'Micrometer', 'Ohaus', 'stopwatch']
+  const instrumentIds = ['instrument-vernier', 'instrument-micrometer', 'instrument-balance', 'instrument-stopwatch']
   for (let i = 0; i < 4; i++) {
     await page.evaluate((idx) => {
       const b = [...document.querySelectorAll('#panel .seg-btn')][idx]
       b?.click()
     }, i)
     await sleep(1200)
-    const framed = await page.evaluate(() => {
-      const app = window.APP
-      const lab = app.debug.lab
-      const inst = lab.instruments?.[lab.activeIndex]
-      if (!inst) return { visible: false, onScreen: false }
-      inst.group.updateWorldMatrix(true, true)
-      const v = inst.group.position.clone()
-      inst.group.getWorldPosition(v)
-      v.project(app.debug.engine.camera)
-      return {
-        visible: inst.group.visible,
-        onScreen: Math.abs(v.x) < 1.2 && Math.abs(v.y) < 1.2,
-      }
-    })
+    const framed = await groupCentre(page, instrumentIds[i])
     check(`apparatus: ${instrumentNames[i]} is shown and framed`,
-      framed.visible && framed.onScreen, JSON.stringify(framed))
+      !!framed && Math.abs(framed.ndcX) < 1.15 && Math.abs(framed.ndcY) < 1.15,
+      framed ? `ndc ${framed.ndcX.toFixed(2)}, ${framed.ndcY.toFixed(2)}` : 'not found')
     await shot(page, shots, `07-instrument-${i}.png`)
   }
 

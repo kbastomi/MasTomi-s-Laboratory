@@ -29,7 +29,7 @@ npm run typecheck      # tsc --noEmit
 ```
 
 Node **22.12+** is required (Vite 8, and `node:sqlite` for the optional
-back-end).
+back-end). See [`docs/QA.md`](docs/QA.md) for the QA options.
 
 ---
 
@@ -67,6 +67,7 @@ adding the third.
 |---|---|
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | how the whole thing fits together |
 | [`docs/ADDING-A-LAB.md`](docs/ADDING-A-LAB.md) | how to write a new simulation |
+| [`docs/QA.md`](docs/QA.md) | the browser test harness and its options |
 | [`docs/DEPLOY-CLOUDFLARE.md`](docs/DEPLOY-CLOUDFLARE.md) | deploying to Cloudflare Pages |
 | [`docs/DEPLOY-VPS.md`](docs/DEPLOY-VPS.md) | the later LEMP + Node.js deployment |
 | [`docs/conversations/`](docs/conversations/) | the working sessions, kept with the code |
